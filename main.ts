@@ -1,3 +1,4 @@
+import { GribMessage, GribSection } from "./src/interfaces.ts";
 import { toInt, toString } from "./src/parser.ts";
 
 export function add(a: number, b: number): number {
@@ -24,20 +25,13 @@ async function parseGribFile(filePath: string) {
         count++
         await file.seek(position, Deno.SeekMode.Start)
         const buffer = new Uint8Array(16)
-        const bytesRead = await file.read(buffer)
-        const discipline = buffer[6] // 0=meteo, 1=hydro, 2=land surface, 3=space products
-        const gribVersion = buffer[7]
-        // console.log(`${bytesRead} bytes: ${buffer}`)
-        const messageType = toString(buffer.slice(0, 4))
+        await file.read(buffer)
         const messageLength = toInt(buffer.slice(8, 16))
-        const messageLengthMB = (messageLength / 1024 / 1024).toFixed(2)
-        // this is also a 0th section
-        console.log(`${messageType} v${gribVersion} d${discipline} size: ${messageLengthMB} MB .. ${messageLength}`)
 
         if (count <= 91) {
-            await parseGribMessage(file, position)
+            const gribMessage = await parseGribMessage(file, position)
+            // console.log(gribMessage)
         }
-
 
         position += messageLength
     }
@@ -47,7 +41,55 @@ async function parseGribFile(filePath: string) {
     file.close()
 }
 
-async function parseGribMessage(file: Deno.FsFile, position: number) {
+async function parseGribMessage(file: Deno.FsFile, initPosition: number): Promise<GribMessage> {
+    const sections: GribSection[] = []
+    let position = initPosition
+    await file.seek(position, Deno.SeekMode.Start)
+    const initBuffer = new Uint8Array(16)
+    await file.read(initBuffer)
+    const messageType = toString(initBuffer.slice(0, 4))
+    if (messageType !== 'GRIB') console.error('Not a GRIB message!')
+    const messageLength = toInt(initBuffer.slice(8, 16))
+    // console.log(messageLength)
+    const discipline = initBuffer[6]
+    const meteo = { discipline, category: -1, product: -1 } // to be updated in 4th section
+    const version = initBuffer[7]
+    position += 16
+    while (position < initPosition + messageLength - 4) { // last 4 bytes 55, 55, 55, 55 which indicates end of message
+        await file.seek(position, Deno.SeekMode.Start)
+        const sizeBuffer = new Uint8Array(4)
+        await file.read(sizeBuffer)
+        const size = toInt(sizeBuffer)
+        const bufferSize = Math.min(size, 32) // don't read more than 32 bytes from section
+        const buffer = new Uint8Array(bufferSize)
+        await file.read(buffer)
+        const section: GribSection = {
+            id: buffer[0],
+            offset: position,
+            size: size,
+        }
+        sections.push(section)
+
+        switch (section.id) {
+            case 4:
+                meteo.category = buffer[5]
+                meteo.product = buffer[6]
+                break;
+        }
+
+        position += size
+    }
+    
+    return {
+        offset: initPosition,
+        size: messageLength,
+        version,
+        meteo,
+        sections,
+    }
+}
+
+async function parseGribMessage2(file: Deno.FsFile, position: number) {
     /* ++++++++++++ 1st section ++++++++++++++++ */
     await file.seek(position+16, Deno.SeekMode.Start)
     const sizeBuffer = new Uint8Array(4)
@@ -91,7 +133,7 @@ async function parseGribMessage(file: Deno.FsFile, position: number) {
     const buffer4 = new Uint8Array(sectionSize4-4)
     await file.read(buffer4)
     // console.log(`section size: ${sectionSize4}, buffer: ${buffer4}`)
-    // console.log(buffer4.slice(4, 8).toString())
+    console.log(buffer4.slice(4, 8).toString())
 
     const sectionNumber4 = buffer4[0]
     const dataPoints = toInt(buffer.slice(1, 5))
