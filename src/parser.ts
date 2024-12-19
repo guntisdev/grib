@@ -1,4 +1,5 @@
 import { GribMessage, GribSection } from "./interfaces.ts";
+import { meteoCodeToName } from "./meteoMapping.ts";
 
 export async function parseGribFile(filePath: string): Promise<GribMessage[]> {
     const gribArr: GribMessage[] = []
@@ -37,6 +38,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     // console.log(messageLength)
     const discipline = initBuffer[6]
     const meteo = { discipline, category: -1, product: -1 } // to be updated in 4th section
+    const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
     const version = initBuffer[7]
     position += 16
     while (position < initPosition + messageLength - 4) { // last 4 bytes 55, 55, 55, 55 which indicates end of message
@@ -44,7 +46,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         const sizeBuffer = new Uint8Array(4)
         await file.read(sizeBuffer)
         const size = toInt(sizeBuffer)
-        const bufferSize = Math.min(size, 32) // don't read more than 32 bytes from section
+        const bufferSize = Math.min(size, 64) // don't read more than 64 bytes from section
         const buffer = new Uint8Array(bufferSize)
         await file.read(buffer)
         const section: GribSection = {
@@ -55,6 +57,11 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         sections.push(section)
 
         switch (section.id) {
+            case 3:
+                grid.rows = toInt(buffer.slice(26, 30))
+                grid.cols = toInt(buffer.slice(30, 34))
+                grid.template = buffer[1]
+                break
             case 4:
                 meteo.category = buffer[5]
                 meteo.product = buffer[6]
@@ -69,6 +76,8 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         size: messageLength,
         version,
         meteo,
+        grid,
+        title: meteoCodeToName(meteo).join(', '),
         sections,
     }
 }

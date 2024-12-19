@@ -6,11 +6,19 @@ export type MeteoParam = {
     product: number,
 }
 
+export type MeteoGrid = {
+    cols: number,
+    rows: number,
+    template: number, // 0 - regular lat/lon
+}
+
 export type GribMessage = {
     offset: number,
     size: number,
     version: number,
+    title: string,
     meteo: MeteoParam,
+    grid: MeteoGrid,
     sections: GribSection[],
 }
 
