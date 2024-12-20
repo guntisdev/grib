@@ -15,7 +15,7 @@ window.onload = () => {
     fetch(`${API_ORIGIN}/grib-structure`)
         .then(re => re.json())
         .then(async (gribArr: GribMessage[]) => {
-            const flux = gribArr.find(g => g.meteo.discipline === 0 && g.meteo.category === 0 && g.meteo.product === 10)
+            const flux = gribArr.find(g => g.meteo.discipline === 0 && g.meteo.category === 0 && g.meteo.product === 0)
             if (!flux) throw new Error('Flux meteo param not found')
             const binarySection = flux.sections.find(section => section.id === 7)
             if (!binarySection) throw new Error('Binary section not found')
