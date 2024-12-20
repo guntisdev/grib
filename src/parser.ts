@@ -58,8 +58,8 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
 
         switch (section.id) {
             case 3:
-                grid.rows = toInt(buffer.slice(26, 30))
-                grid.cols = toInt(buffer.slice(30, 34))
+                grid.cols = toInt(buffer.slice(26, 30))
+                grid.rows = toInt(buffer.slice(30, 34))
                 grid.template = buffer[1]
                 break
             case 4:
@@ -80,6 +80,17 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         title: meteoCodeToName(meteo).join(', '),
         sections,
     }
+}
+
+export async function extractBinaryChunk(filePath: string, offset: number, length: number): Promise<Uint8Array> {
+    const buffer = new Uint8Array(length)
+
+    const file = await Deno.open(filePath)
+    await file.seek(offset, Deno.SeekMode.Start)
+    await file.read(buffer)
+    file.close()
+
+    return buffer
 }
 
 
