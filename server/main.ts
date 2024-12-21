@@ -1,7 +1,9 @@
-import { GribMessage } from "./src/interfaces.ts";
-import { meteoCodeToName, sortMeteoParams } from "./src/meteoMapping.ts";
-import { extractBinaryChunk, toInt } from "./src/parser.ts";
-import { parseGribFile } from "./src/parser.ts";
+import { GribMessage } from "./interfaces.ts";
+import { meteoCodeToName, sortMeteoParams } from "./meteoMapping.ts";
+import { extractBinaryChunk, toInt } from "./parser.ts";
+import { parseGribFile } from "./parser.ts";
+
+import "jsr:@std/dotenv/load"
 
 const FILE_PATH = 'data/harmonie_dini_sf.grib'
 const API_PREFIX = '/api'
@@ -20,13 +22,31 @@ Deno.serve({
     if (req.method === 'GET') {
         if (path === `${API_PREFIX}/grib-structure`) {
             const gribArr = await parseGribFile(FILE_PATH)
-            const re = JSON.stringify(gribArr)
-            return new Response(re, {
+            return new Response(JSON.stringify(gribArr), {
                 headers: {
                         "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*", // Allow all origins
+                        "Access-Control-Allow-Origin": "*",
                 },
-          })
+            })
+        }
+        else if(path === `${API_PREFIX}/dini-sf-structure`) {
+            const harmonieUrl = Deno.env.get("HARMONIE_URL")
+            const harmonieApiKey = Deno.env.get("HARMONIE_API_KEY")
+            if (!harmonieUrl || ! harmonieApiKey) {
+                return new Response("<html>Invalid config for harmonie dini sf</html>", {
+                    status: 500,
+                    headers: {
+                      "content-type": "text/html",
+                    },
+                  });
+            }
+            const diniSf = await fetch(`${harmonieUrl}?api-key=${harmonieApiKey}`).then(re => re.json())
+            return new Response(JSON.stringify(diniSf), {
+                headers: {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                },
+            })
         }
         else if (binaryChunkPattern) {
             const { from, length } = binaryChunkPattern.pathname.groups
@@ -50,6 +70,7 @@ Deno.serve({
 // Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
 if (import.meta.main) {
     console.log('on file run')
+    
     // const gribArr = await parseGribFile(FILE_PATH)
 
     // // console.log(gribArr)

@@ -1,4 +1,4 @@
-import { GribMessage } from '../../src/interfaces.ts'
+import { GribMessage } from '../../server/interfaces.ts'
 
 export function draw(
     canvas: HTMLCanvasElement,

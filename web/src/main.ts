@@ -1,5 +1,6 @@
-import { GribMessage } from '../../src/interfaces.ts'
+import { GribMessage } from '../../server/interfaces.ts'
 import { draw } from './draw.ts';
+import { fetchLatestDiniSf } from './parseDiniSf.ts';
 
 // export const API_ORIGIN = import.meta.env.MODE === 'development'
 //     ? 'http://0.0.0.0:8080/api' : `${location.origin}/api`
@@ -7,6 +8,10 @@ export const API_ORIGIN = 'http://0.0.0.0:8000/api'
 
 window.onload = () => {
     console.log('window.onload')
+    fetchLatestDiniSf()
+        .then(console.log)
+
+    return;
 
     const container = document.querySelector('#app')!
     const canvas = document.createElement('canvas')
