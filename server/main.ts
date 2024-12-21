@@ -13,40 +13,50 @@ Deno.serve({
       console.log("Deno server listening on *:", port);
     },
   }, async (req: Request) => {
+    const harmonieUrl = Deno.env.get("HARMONIE_URL")
+    const harmonieApiKey = Deno.env.get("HARMONIE_API_KEY")
+    if (!harmonieUrl || ! harmonieApiKey) {
+        return new Response(JSON.stringify({error: "Invalid config for harmonie dini sf"}),
+            { status: 500, ...jsonHeaders })
+    }
+
     const urlObject = new URL(req.url)
     const path = urlObject.pathname
     console.log(`method: ${req.method}, path: ${path}`)
 
     const binaryChunkPattern = new URLPattern({ pathname: "/api/binary-chunk/:from/:length" }).exec(req.url)
+    const downloadGribPattern = new URLPattern({ pathname: "/api/download-grib/:id" }).exec(req.url)
 
     if (req.method === 'GET') {
         if (path === `${API_PREFIX}/grib-structure`) {
             const gribArr = await parseGribFile(FILE_PATH)
-            return new Response(JSON.stringify(gribArr), {
-                headers: {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
-                },
-            })
+            return new Response(JSON.stringify(gribArr), jsonHeaders)
         }
         else if(path === `${API_PREFIX}/dini-sf-structure`) {
-            const harmonieUrl = Deno.env.get("HARMONIE_URL")
-            const harmonieApiKey = Deno.env.get("HARMONIE_API_KEY")
-            if (!harmonieUrl || ! harmonieApiKey) {
-                return new Response("<html>Invalid config for harmonie dini sf</html>", {
-                    status: 500,
-                    headers: {
-                      "content-type": "text/html",
-                    },
-                  });
+            const diniUrl = `${harmonieUrl}/v1/forecastdata/collections/harmonie_dini_sf/items?api-key=${harmonieApiKey}`
+            const diniSf = await fetch(diniUrl).then(re => re.json())
+            return new Response(JSON.stringify(diniSf), jsonHeaders)
+        }
+        else if (downloadGribPattern) {
+            const { id } = downloadGribPattern.pathname.groups
+            if (typeof id !== 'string') return new Response(JSON.stringify({ error: "Incorrect grib id" }),
+            { status: 500, ...jsonHeaders })
+            const gribUrl = `${harmonieUrl}/v1/forecastdata/download/${id}?api-key=${harmonieApiKey}`
+            const outputPath = `data/${id}`
+            const response = await fetch(gribUrl);
+            if (!response.ok) {
+                return new Response(JSON.stringify({ error: "Failed to download file" }),
+                { status: 500, ...jsonHeaders })
             }
-            const diniSf = await fetch(`${harmonieUrl}?api-key=${harmonieApiKey}`).then(re => re.json())
-            return new Response(JSON.stringify(diniSf), {
-                headers: {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
-                },
-            })
+
+            const file = await Deno.open(outputPath, { write: true, create: true })
+            await response.body?.pipeTo(file.writable)
+
+            const fileInfo = await Deno.stat(outputPath)
+            return new Response(
+                JSON.stringify({ outputPath, fileSize: fileInfo.size }),
+                { status: 200, ...jsonHeaders }
+            )
         }
         else if (binaryChunkPattern) {
             const { from, length } = binaryChunkPattern.pathname.groups
@@ -102,4 +112,11 @@ async function parseData(filePath: string, gribMeta: GribMessage) {
     // console.log(`flux binary size: ${size}`)
 
     file.close()
+}
+
+const jsonHeaders = {
+    headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+    },
 }

@@ -1,6 +1,6 @@
-import { GribMessage } from '../../server/interfaces.ts'
+import { GribMessage } from '../../../server/interfaces.ts'
 
-export function draw(
+export function drawGrib(
     canvas: HTMLCanvasElement,
     grib: GribMessage,
     buffer: Uint8Array,
