@@ -1,12 +1,11 @@
-import { GribMessage } from "./interfaces.ts";
-import { meteoCodeToName, sortMeteoParams } from "./meteoMapping.ts";
-import { extractBinaryChunk, toInt } from "./parser.ts";
-import { parseGribFile } from "./parser.ts";
+import 'jsr:@std/dotenv/load'   // load .env
+import { GribMessage } from './interfaces.ts'
+import { extractBinaryChunk } from './parser.ts'
+import { parseGribFile } from './parser.ts'
 
-import "jsr:@std/dotenv/load"
-
-const FILE_PATH = 'data/harmonie_dini_sf.grib'
+const DATA_PATH = 'data'
 const API_PREFIX = '/api'
+
 
 Deno.serve({
     onListen: ({ port }) => {
@@ -29,7 +28,20 @@ Deno.serve({
 
     if (req.method === 'GET') {
         if (path === `${API_PREFIX}/grib-structure`) {
-            const gribArr = await parseGribFile(FILE_PATH)
+            let filePath: string | undefined
+            for await (const entry of Deno.readDir(DATA_PATH)) {
+                if (entry.isFile && entry.name.endsWith('.grib')) {
+                    filePath = `${DATA_PATH}/${entry.name}`;
+                    break;
+                }
+            }
+
+            if (!filePath) {
+                return new Response(JSON.stringify({ error: 'No grib file found' }),
+                    { status: 500, ...jsonHeaders })
+            }
+
+            const gribArr = await parseGribFile(filePath)
             return new Response(JSON.stringify(gribArr), jsonHeaders)
         }
         else if(path === `${API_PREFIX}/dini-sf-structure`) {
@@ -41,8 +53,10 @@ Deno.serve({
             const { id } = downloadGribPattern.pathname.groups
             if (typeof id !== 'string') return new Response(JSON.stringify({ error: "Incorrect grib id" }),
             { status: 500, ...jsonHeaders })
+            await Deno.remove(DATA_PATH, { recursive: true })
+            await Deno.mkdir(DATA_PATH)
             const gribUrl = `${harmonieUrl}/v1/forecastdata/download/${id}?api-key=${harmonieApiKey}`
-            const outputPath = `data/${id}`
+            const outputPath = `${DATA_PATH}/${id}`
             const response = await fetch(gribUrl);
             if (!response.ok) {
                 return new Response(JSON.stringify({ error: "Failed to download file" }),
@@ -62,7 +76,21 @@ Deno.serve({
             const { from, length } = binaryChunkPattern.pathname.groups
             const fromNumber = parseInt(from!, 10)
             const lengthNumber = parseInt(length!, 10)
-            const buffer = await extractBinaryChunk(FILE_PATH, fromNumber, lengthNumber)
+
+            let filePath: string | undefined
+            for await (const entry of Deno.readDir(DATA_PATH)) {
+                if (entry.isFile && entry.name.endsWith('.grib')) {
+                    filePath = `${DATA_PATH}/${entry.name}`;
+                    break;
+                }
+            }
+
+            if (!filePath) {
+                return new Response(JSON.stringify({ error: 'No grib file found' }),
+                    { status: 500, ...jsonHeaders })
+            }
+
+            const buffer = await extractBinaryChunk(filePath, fromNumber, lengthNumber)
 
             return new Response(buffer, {
                 headers: {
@@ -75,7 +103,7 @@ Deno.serve({
     }
     
     return new Response('404')
-  });
+})
 
 // Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
 if (import.meta.main) {
