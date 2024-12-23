@@ -44,6 +44,20 @@ Deno.serve({
             const gribArr = await parseGribFile(filePath)
             return new Response(JSON.stringify(gribArr), jsonHeaders)
         }
+        else if (path === `${API_PREFIX}/grib-name`) {
+            let fileName: string | undefined
+            for await (const entry of Deno.readDir(DATA_PATH)) {
+                if (entry.isFile && entry.name.endsWith('.grib')) {
+                    fileName = entry.name
+                    break;
+                }
+            }
+            if (!fileName) {
+                return new Response(JSON.stringify({ error: 'Grib not found' }),
+                    { status: 404, ...jsonHeaders })
+            }
+            return new Response(JSON.stringify({ fileName }), jsonHeaders)
+        }
         else if(path === `${API_PREFIX}/dini-sf-structure`) {
             const diniUrl = `${harmonieUrl}/v1/forecastdata/collections/harmonie_dini_sf/items?api-key=${harmonieApiKey}`
             const diniSf = await fetch(diniUrl).then(re => re.json())

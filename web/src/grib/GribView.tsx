@@ -6,10 +6,12 @@ import { GribMessage } from '../interfaces/interfaces'
 import { sortMeteoParams } from '../interfaces/meteoMapping'
 import { GribMessageView } from './GribMessage'
 import { drawGrib } from './drawGrib'
+import { Loading } from '../compontents/loading/Loading'
 
 export const GribView: Component<{}> = () => {
     let canvas: HTMLCanvasElement | undefined
     const [getMessages, setMessages] = createSignal<GribMessage[]>([])
+    const [getFileName, setFileName] = createSignal('')
 
     fetch(`${API_ORIGIN}/grib-structure`)
         .then(re => re.json())
@@ -17,6 +19,10 @@ export const GribView: Component<{}> = () => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
         })
+    
+    fetch(`${API_ORIGIN}/grib-name`)
+        .then(re => re.json())
+        .then(response => setFileName(response.fileName))
 
     function onMessageClick(id: number) {
         if (!canvas) throw new Error('canvas not found')
@@ -36,8 +42,9 @@ export const GribView: Component<{}> = () => {
     return <>
         <canvas ref={canvas} />
         <div class={styles.sidebar}>
+            <b>{ getFileName() }</b>
             <ul>
-                TODO - request for cached file name
+                { getMessages().length === 0 && <Loading /> }
                 { getMessages().map((message, i) =>
                     <GribMessageView id={i} message={message} onMessageClick={onMessageClick} />
                 )}
