@@ -3,7 +3,7 @@ import { GribMessage } from './interfaces.ts'
 import { extractBinaryChunk } from './parser.ts'
 import { parseGribFile } from './parser.ts'
 
-const DATA_PATH = 'data'
+const DATA_PATH = './data'
 const API_PREFIX = '/api'
 
 

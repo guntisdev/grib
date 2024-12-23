@@ -1,6 +1,6 @@
 import { API_ORIGIN } from '../consts.ts'
 
-export function fetchLatestDiniSf() {
+export function fetchLatestDini() {
     return fetch(`${API_ORIGIN}/dini-sf-structure`)
         .then(re => re.json())
         .then(parseDini)
