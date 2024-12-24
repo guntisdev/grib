@@ -18,7 +18,7 @@ export function drawGrib(
             const index = (row * grib.grid.cols + col) * 4
 
             const val1 = buffer[bufferI]
-            const val2 = buffer[bufferI+1]
+            // const val2 = buffer[bufferI+1]
             imgData.data[index] = val1;     // R
             imgData.data[index + 1] = 0; // G
             imgData.data[index + 2] = 0; // B
