@@ -6,7 +6,7 @@ import { extractBinaryChunk } from './parser.ts'
 import { parseGribFile } from './parser.ts'
 import { serveSPA } from './serveSPA.ts'
 
-const DATA_PATH = './data'
+const DATA_PATH = 'data'
 const API_PREFIX = '/api'
 
 
@@ -26,9 +26,12 @@ Deno.serve({
     const path = urlObject.pathname
     console.log(`method: ${req.method}, path: ${path}`)
 
-    if (req.method !== 'GET') new Response(JSON.stringify({ error: 'Only GET method accepted' }),
-        { status: 404, ...jsonHeaders })
+    // only GET requests
+    if (req.method !== 'GET') {
+        new Response(JSON.stringify({ error: 'Only GET method accepted' }), { status: 404, ...jsonHeaders })
+    }
 
+    // serves SPA
     if (!path.startsWith('/api/')) {
         return serveSPA(req)
     }
@@ -76,7 +79,8 @@ Deno.serve({
         const { id } = downloadGribPattern.pathname.groups
         if (typeof id !== 'string') return new Response(JSON.stringify({ error: "Incorrect grib id" }),
         { status: 500, ...jsonHeaders })
-        await Deno.remove(DATA_PATH, { recursive: true })
+        // await Deno.remove(DATA_PATH, { recursive: true })
+        await clearFolder(DATA_PATH)
         await Deno.mkdir(DATA_PATH)
         const gribUrl = `${harmonieUrl}/v1/forecastdata/download/${id}?api-key=${harmonieApiKey}`
         const outputPath = `${DATA_PATH}/${id}`
@@ -170,3 +174,19 @@ const jsonHeaders = {
             "Access-Control-Allow-Origin": "*",
     },
 }
+
+async function clearFolder(folderPath: string): Promise<void> {
+    try {
+      for await (const entry of Deno.readDir(folderPath)) {
+        const entryPath = `${folderPath}/${entry.name}`;
+        if (entry.isDirectory) {
+          await Deno.remove(entryPath, { recursive: true }); // Remove directory and its contents
+        } else {
+          await Deno.remove(entryPath); // Remove file
+        }
+      }
+      console.log(`Cleared contents of folder: ${folderPath}`);
+    } catch (error) {
+      console.error("Error clearing folder contents:", error);
+    }
+  }
