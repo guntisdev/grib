@@ -6,6 +6,8 @@ import { sortMeteoParams } from '../interfaces/meteoMapping'
 import { GribMessageView } from './GribMessage'
 import { drawGrib } from './drawGrib'
 import { Loading } from '../compontents/loading/Loading'
+import { fetchBuffer, fetchJson } from '../helpers/fetch'
+
 import styles from './grib.module.css'
 
 export const GribView: Component<{}> = () => {
@@ -15,17 +17,17 @@ export const GribView: Component<{}> = () => {
     const [getIsLoading, setIsLoading] = createSignal(true)
     const [getIsSidebarOpen, setIsSidebarOper] = createSignal(true)
 
-    fetch(`${API_ORIGIN}/grib-structure`)
-        .then(re => re.json())
+    fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
         })
+        .catch(err => console.warn(err.message))
         .finally(() => setIsLoading(false))
     
-    fetch(`${API_ORIGIN}/grib-name`)
-        .then(re => re.json())
+    fetchJson(`${API_ORIGIN}/grib-name`)
         .then(response => setFileName(response.fileName))
+        .catch(err => console.warn(err.message))
 
     function onMessageClick(id: number) {
         if (!canvas) throw new Error('canvas not found')
@@ -38,9 +40,9 @@ export const GribView: Component<{}> = () => {
         const length = binarySection.size - 5
 
         setIsLoading(true)
-        fetch(`${API_ORIGIN}/binary-chunk/${offset}/${length}`)
-            .then(re => re.arrayBuffer())
+        fetchBuffer(`${API_ORIGIN}/binary-chunk/${offset}/${length}`)
             .then(buffer => drawGrib(canvas, message, new Uint8Array(buffer)))
+            .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
     }
 
@@ -66,7 +68,7 @@ export const GribView: Component<{}> = () => {
                     <GribMessageView id={i} message={message} onMessageClick={onMessageClick} />
                 )}
             </ul>
-            <a href='/dini'>Get latest harmonie dini sf</a>
+            <a href='/dini'>&gt;&gt; Get latest harmonie dini sf &lt;&lt;</a>
         </div>
     </>
 }

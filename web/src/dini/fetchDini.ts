@@ -1,8 +1,8 @@
 import { API_ORIGIN } from '../consts.ts'
+import { fetchJson } from '../helpers/fetch.ts'
 
 export function fetchLatestDini() {
-    return fetch(`${API_ORIGIN}/dini-sf-structure`)
-        .then(re => re.json())
+    return fetchJson(`${API_ORIGIN}/dini-sf-structure`)
         .then(parseDini)
         .then(features => features.sort(sortRecentDini))
 }
