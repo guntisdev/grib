@@ -12,6 +12,7 @@ export const GribView: Component<{}> = () => {
     let canvas: HTMLCanvasElement | undefined
     const [getMessages, setMessages] = createSignal<GribMessage[]>([])
     const [getFileName, setFileName] = createSignal('')
+    const [getIsLoading, setIsLoading] = createSignal(true)
 
     fetch(`${API_ORIGIN}/grib-structure`)
         .then(re => re.json())
@@ -19,6 +20,7 @@ export const GribView: Component<{}> = () => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
         })
+        .finally(() => setIsLoading(false))
     
     fetch(`${API_ORIGIN}/grib-name`)
         .then(re => re.json())
@@ -34,17 +36,19 @@ export const GribView: Component<{}> = () => {
         const offset = binarySection.offset + 5
         const length = binarySection.size - 5
 
+        setIsLoading(true)
         fetch(`${API_ORIGIN}/binary-chunk/${offset}/${length}`)
             .then(re => re.arrayBuffer())
             .then(buffer => drawGrib(canvas, message, new Uint8Array(buffer)))
+            .finally(() => setIsLoading(false))
     }
 
     return <>
         <canvas ref={canvas} />
         <div class={styles.sidebar}>
             <b>{ getFileName() }</b>
+                { getIsLoading() && <Loading /> }
             <ul>
-                { getMessages().length === 0 && <Loading /> }
                 { getMessages().map((message, i) =>
                     <GribMessageView id={i} message={message} onMessageClick={onMessageClick} />
                 )}

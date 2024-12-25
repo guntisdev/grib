@@ -7,7 +7,8 @@ export const GribMessageView: Component<{
     onMessageClick: (id: number) => void,
 }> = ({ id, message, onMessageClick }) => {
     const { discipline, category, product } = message.meteo
-    const text = `${discipline}-${category}-${product} ${message.title}`
+    const shortTitle = message.title.split(', ').slice(1).join(', ')
+    const text = `${discipline}-${category}-${product} ${shortTitle}`
 
     return <li onClick={() => onMessageClick(id)}>
         { text }

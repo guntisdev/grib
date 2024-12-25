@@ -8,6 +8,7 @@ export function drawGrib(
     canvas.width = grib.grid.cols
     canvas.height = grib.grid.rows
     canvas.style.width = '100%'
+    canvas.style.minWidth = '1280px'
     const ctx = canvas.getContext('2d')!
     const imgData = ctx.createImageData(grib.grid.cols, grib.grid.rows)
     

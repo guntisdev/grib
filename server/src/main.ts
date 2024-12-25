@@ -79,9 +79,7 @@ Deno.serve({
         const { id } = downloadGribPattern.pathname.groups
         if (typeof id !== 'string') return new Response(JSON.stringify({ error: "Incorrect grib id" }),
         { status: 500, ...jsonHeaders })
-        // await Deno.remove(DATA_PATH, { recursive: true })
         await clearFolder(DATA_PATH)
-        await Deno.mkdir(DATA_PATH)
         const gribUrl = `${harmonieUrl}/v1/forecastdata/download/${id}?api-key=${harmonieApiKey}`
         const outputPath = `${DATA_PATH}/${id}`
         const response = await fetch(gribUrl);
