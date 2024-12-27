@@ -21,6 +21,10 @@ export const GribView: Component<{}> = () => {
         .then(async (gribArr: GribMessage[]) => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
+
+            // TEMPORARY land-conver as here latvia is visible best
+            // const id = gribArr.findIndex(m => m.meteo.discipline===2)
+            // if (id !== undefined) onMessageClick(id)
         })
         .catch(err => console.warn(err.message))
         .finally(() => setIsLoading(false))

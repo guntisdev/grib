@@ -40,7 +40,7 @@ export const DiniView: Component<{}> = () => {
             { !!getServerMessage() && getServerMessage() }
             { getFeatures().map(({ created, datetime, modelRun, id}) =>
                 <li>
-                    <span>{modelRun} {created}</span>
+                    <span>{modelRun} {created}</span>&nbsp;
                     <a href='' onClick={() =>onFeatureClick(id)}>{datetime}</a>
                 </li>
             )}
