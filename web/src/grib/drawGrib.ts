@@ -1,5 +1,11 @@
 import { GribMessage } from '../interfaces/interfaces.ts'
 
+export const VIOLET: RGBu8 = [127, 0, 255]
+export const YELLOW: RGBu8 = [255, 255, 0]
+export const BLUE: RGBu8 = [0, 0, 255]
+export const ORANGE: RGBu8 = [255, 43, 0]
+export const DARK_VIOLET: RGBu8 = [51, 0, 102]
+
 export function drawGrib(
     canvas: HTMLCanvasElement,
     grib: GribMessage,
@@ -19,11 +25,13 @@ export function drawGrib(
             const index = (row * grib.grid.cols + col) * 4
 
             const val1 = buffer[bufferI]
-            // const val2 = buffer[bufferI+1]
-            imgData.data[index] = val1;     // R
-            imgData.data[index + 1] = 0; // G
-            imgData.data[index + 2] = 0; // B
-            imgData.data[index + 3] = 255;   // A
+
+            const color = interpolateColors(val1, BLUE, YELLOW)
+            imgData.data[index] = color[0]
+            imgData.data[index + 1] = color[1]
+            imgData.data[index + 2] = color[2]
+            imgData.data[index + 3] = 255
+            
         }
     }
 
@@ -39,4 +47,16 @@ export function drawGrib(
     ctx.scale(1, -1)
     ctx.drawImage(tempCanvas, 0, -canvas.height)
     ctx.restore()
+}
+
+
+type RGBu8 = [number, number, number]
+function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBu8 {
+    const color = a.slice(0).map((from, i) => {
+        const to = b[i]
+        const delta = (to - from) * (value/255)
+        return from + delta
+    })
+
+    return color as RGBu8
 }
