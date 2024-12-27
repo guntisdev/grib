@@ -16,6 +16,7 @@ export const GribView: Component<{}> = () => {
     const [getFileName, setFileName] = createSignal('')
     const [getIsLoading, setIsLoading] = createSignal(true)
     const [getIsSidebarOpen, setIsSidebarOper] = createSignal(true)
+    const [getSelectedMessage, setSelectedMessage] = createSignal(-1)
 
     fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
@@ -45,7 +46,10 @@ export const GribView: Component<{}> = () => {
 
         setIsLoading(true)
         fetchBuffer(`${API_ORIGIN}/binary-chunk/${offset}/${length}`)
-            .then(buffer => drawGrib(canvas, message, new Uint8Array(buffer)))
+            .then(buffer => {
+                drawGrib(canvas, message, new Uint8Array(buffer))
+                setSelectedMessage(id)
+            })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
     }
@@ -69,7 +73,12 @@ export const GribView: Component<{}> = () => {
             </div>
             <ul>
                 { getMessages().map((message, i) =>
-                    <GribMessageView id={i} message={message} onMessageClick={onMessageClick} />
+                    <GribMessageView
+                        id={i}
+                        message={message}
+                        getSelected={()=>i===getSelectedMessage()}
+                        onMessageClick={onMessageClick}
+                    />
                 )}
             </ul>
             <a href='/dini'>&gt;&gt; Get latest harmonie dini sf &lt;&lt;</a>

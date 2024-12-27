@@ -99,7 +99,6 @@ function extractBbox(
         const inputBuffer = source.subarray(inputOffset, inputOffset+readBytes)
         output.set(inputBuffer, i)
         i += readBytes
-        // console.log(i, width*height)
     }
 
     return output
