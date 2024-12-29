@@ -37,7 +37,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     const messageLength = toInt(initBuffer.slice(8, 16))
     // console.log(messageLength)
     const discipline = initBuffer[6]
-    const meteo = { discipline, category: -1, product: -1 } // to be updated in 4th section
+    const meteo = { discipline, category: -1, product: -1, subType: 'none' } // to be updated in 4th section
     const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
     const version = initBuffer[7]
     let bitsPerDataPoint = 0
@@ -62,10 +62,17 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 grid.cols = toInt(buffer.slice(26, 30))
                 grid.rows = toInt(buffer.slice(30, 34))
                 grid.template = buffer[1]
+                // data points toInt(buffer.slice(2, 6))
                 break
             case 4:
                 meteo.category = buffer[5]
                 meteo.product = buffer[6]
+                if (buffer[4] === 1) meteo.subType = 'now'
+                if (buffer[4] === 11) meteo.subType = 'avg'
+                // 0 = No rain, 1 = Drizzle, 2 = Light rain, 3 = Moderate rain, 4 Heavy rain
+                // if (meteo.category === 1) {
+                //     console.log(buffer)
+                // }
                 break;
             case 5:
                 bitsPerDataPoint = buffer[15]
@@ -144,54 +151,4 @@ async function parseGribMessage2(file: Deno.FsFile, position: number) {
     const optionalGridPoints = buffer[6] // 0 - not included
     const templateNumber = buffer[7]  // 0 - lat/lon
     // console.log(`n: ${sectionNumber3}, gridPoints: ${gridPoints}`)
-
-
-    /* ++++++++++++ 4th section ++++++++++++++++ */
-    const sizeBuffer4 = new Uint8Array(4)
-    await file.read(sizeBuffer4)
-    const sectionSize4 = toInt(sizeBuffer4.slice(0, 4))
-    const buffer4 = new Uint8Array(sectionSize4-4)
-    await file.read(buffer4)
-    // console.log(`section size: ${sectionSize4}, buffer: ${buffer4}`)
-    console.log(buffer4.slice(4, 8).toString())
-
-    const sectionNumber4 = buffer4[0]
-    const dataPoints = toInt(buffer.slice(1, 5))
-    // console.log(`n: ${sectionNumber4}, dataPoints: ${dataPoints}`)
-
-
-    /* ++++++++++++ 5th section ++++++++++++++++ */
-    const sizeBuffer5 = new Uint8Array(4)
-    await file.read(sizeBuffer5)
-    const sectionSize5 = toInt(sizeBuffer5.slice(0, 4))
-    const buffer5 = new Uint8Array(sectionSize5-4)
-    await file.read(buffer5)
-    // console.log(`section size: ${sectionSize5}, buffer: ${buffer5}`)
-
-
-    /* ++++++++++++ 6th section ++++++++++++++++ */
-    const sizeBuffer6 = new Uint8Array(4)
-    await file.read(sizeBuffer6)
-    const sectionSize6 = toInt(sizeBuffer6.slice(0, 4))
-    const buffer6 = new Uint8Array(sectionSize6-4)
-    await file.read(buffer6)
-    // console.log(`section size: ${sectionSize6}, buffer: ${buffer6}`)
-
-
-    /* ++++++++++++ 7th section ++++++++++++++++ */
-    // actual data here
-    const buffer7 = new Uint8Array(16)
-    await file.read(buffer7)
-    // console.log(buffer7)
-    const sectionSize7 = toInt(buffer7.slice(0, 4))
-    // console.log(`size: ${sectionSize7}, section: ${buffer7[4]}`)
-
-
-    // handling end of section
-    const totalSectionSize = 16 + sectionSize + sectionSize3 + sectionSize4 + sectionSize5 + sectionSize6 + sectionSize7
-    // console.log(`totalSectionSize ${totalSectionSize}`)
-    await file.seek(position+totalSectionSize, Deno.SeekMode.Start)
-    const bufferEnd = new Uint8Array(16)
-    await file.read(bufferEnd)
-    // console.log(bufferEnd) // ends with 55, 55, 55, 55 which in 7777 in ASCII
 }

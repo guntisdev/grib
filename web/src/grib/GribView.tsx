@@ -23,10 +23,12 @@ export const GribView: Component<{}> = () => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
 
-            const dump = gribArr
-                .filter(m => m.meteo.discipline === 0 && m.meteo.category === 1)
-                .map(m => m.sections.find(s=>s.id===6)!.size)
-            console.log(dump)
+            // const dump = gribArr
+            //     .filter(m => m.sections.find(s=>s.id===6)!.size > 8)
+            //     .filter(m => m.meteo.discipline === 0 && m.meteo.category === 1)
+                // .map(m => m.sections.find(s=>s.id===6)!.size)
+                // .map(m => m.bitsPerDataPoint)
+            // console.log(dump)
 
             // TEMPORARY land-conver as here latvia is visible best
             // const id = gribArr.findIndex(m => m.meteo.discipline===2)
@@ -43,16 +45,28 @@ export const GribView: Component<{}> = () => {
         if (!canvas) throw new Error('canvas not found')
         const message = getMessages()[id]
 
+        const bitmaskSection = message.sections.find(section => section.id === 6)
+        if (!bitmaskSection) throw new Error('Binary section not found')
+        const bitmaskOffset = bitmaskSection.offset + 6
+        const bitmaskLength = bitmaskSection.size - 6
+        const bitmaskPromise = bitmaskSection.size > 6
+            ? fetchBuffer(`${API_ORIGIN}/binary-chunk/${bitmaskOffset}/${bitmaskLength}`)
+            : Promise.resolve(undefined)
+
         const binarySection = message.sections.find(section => section.id === 7)
         if (!binarySection) throw new Error('Binary section not found')
-
-        const offset = binarySection.offset + 5
-        const length = binarySection.size - 5
+        const binaryOffset = binarySection.offset + 5
+        const binaryLength = binarySection.size - 5
 
         setIsLoading(true)
-        fetchBuffer(`${API_ORIGIN}/binary-chunk/${offset}/${length}`)
-            .then(buffer => {
-                drawGrib(canvas, message, new Uint8Array(buffer))
+
+        Promise.all([
+            fetchBuffer(`${API_ORIGIN}/binary-chunk/${binaryOffset}/${binaryLength}`),
+            bitmaskPromise,
+        ])
+            .then(([binaryBuffer, bitmaskBuffer]) => {
+                const bitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
+                drawGrib(canvas, message, new Uint8Array(binaryBuffer), bitmask)
                 setSelectedMessage(id)
             })
             .catch(err => console.warn(err.message))

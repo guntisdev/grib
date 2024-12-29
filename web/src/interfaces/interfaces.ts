@@ -4,6 +4,7 @@ export type MeteoParam = {
     discipline: number, // 0=meteo, 1=hydro, 2=land surface, 3=space products
     category: number, // 0=temperature, 1=moisture, 6=cloud, 19=atmospheric
     product: number,
+    subType: string,
 }
 
 export type MeteoGrid = {
@@ -20,6 +21,7 @@ export type GribMessage = {
     meteo: MeteoParam,
     grid: MeteoGrid,
     bitsPerDataPoint: number,
+    subType: string,
     sections: GribSection[],
 }
 
