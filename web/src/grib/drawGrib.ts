@@ -13,6 +13,7 @@ export function drawGrib(
     grib: GribMessage,
     buffer: Uint8Array,
 ): void {
+    const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
     // cropps latvia out of europe map
     if (IS_CROPPED) {
@@ -20,7 +21,7 @@ export function drawGrib(
         const croppedHeight = 300
         const croppedX = 1906-1-croppedWidth
         const croppedY = 950
-        const croppedBuffer = extractBbox(grib.grid, buffer, croppedX, croppedY, croppedWidth, croppedHeight)
+        const croppedBuffer = extractBbox(grib.grid, buffer, croppedX, croppedY, croppedWidth, croppedHeight, bytesPerPoint)
         grid.cols = croppedWidth
         grid.rows = croppedHeight
         buffer = croppedBuffer
@@ -36,7 +37,7 @@ export function drawGrib(
     for (let row = 0; row < grid.rows; row++) {
         for (let col = 0; col < grid.cols; col++) {
 
-            const bufferI = (row * grid.cols + col) * 2
+            const bufferI = (row * grid.cols + col) * bytesPerPoint
             const index = (row * grid.cols + col) * 4
 
             const val1 = buffer[bufferI]
@@ -81,6 +82,7 @@ function extractBbox(
     y: number,
     width: number,
     height: number,
+    bytesPerPoint = 2,
 ): Uint8Array {
     if (
         x < 0
@@ -91,7 +93,6 @@ function extractBbox(
         throw new Error('Extract bbox out of grid bounds')
     }
 
-    const bytesPerPoint = 2
     const output = new Uint8Array(width*height*bytesPerPoint)
     for (let row=y, i=0; row < y+height; row++) {
         const inputOffset = (row*grid.cols + x)*bytesPerPoint

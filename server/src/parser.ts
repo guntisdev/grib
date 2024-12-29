@@ -40,6 +40,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     const meteo = { discipline, category: -1, product: -1 } // to be updated in 4th section
     const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
     const version = initBuffer[7]
+    let bitsPerDataPoint = 0
     position += 16
     while (position < initPosition + messageLength - 4) { // last 4 bytes 55, 55, 55, 55 which indicates end of message
         await file.seek(position, Deno.SeekMode.Start)
@@ -66,6 +67,9 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 meteo.category = buffer[5]
                 meteo.product = buffer[6]
                 break;
+            case 5:
+                bitsPerDataPoint = buffer[15]
+                break;
         }
 
         position += size
@@ -78,6 +82,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         meteo,
         grid,
         title: meteoCodeToName(meteo).join(', '),
+        bitsPerDataPoint,
         sections,
     }
 }

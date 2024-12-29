@@ -19,6 +19,7 @@ export type GribMessage = {
     title: string,
     meteo: MeteoParam,
     grid: MeteoGrid,
+    bitsPerDataPoint: number,
     sections: GribSection[],
 }
 
