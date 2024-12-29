@@ -48,6 +48,7 @@ export function drawGrib(
     ctx.save()
     ctx.scale(1, -1)
     ctx.drawImage(tempCanvas, 0, -canvas.height)
+    // ctx.drawImage(tempCanvas, 0, 0)
     ctx.restore()
 }
 
@@ -89,7 +90,6 @@ function getFullBuffer(
         for (let bitI=0; bitI<bits.length; bitI++) {
             const newI = (i*8 + bitI) * bytesPerPoint
             if (newI >= newBuffer.length) {
-                console.log(newI, newBuffer.length)
                 break;
             }
             if (bits[bitI]) {
@@ -104,8 +104,6 @@ function getFullBuffer(
             }
         }
     }
-    // console.log(bitmask.length, i, buffer.length, bufferI, bytesPerPoint)
-    // console.log(bitmask)
 
     return newBuffer
 }

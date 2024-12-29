@@ -7,13 +7,13 @@ export function u8ToBits(dec: number): U8bits {
     for (let i=0; i<8; i++) {
         arr[i] = str8[i] === '1' ? true : false
     }
-    return arr as U8bits
+    return arr
 }
 
 function leftPad(str: string): string {
     const padCount = 8 - str.length
     for(let i=0; i<padCount; i++) {
-        str += '0'
+        str = '0' + str
     }
     return str
 }
