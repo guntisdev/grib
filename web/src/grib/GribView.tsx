@@ -1,4 +1,4 @@
-import { Component, createSignal } from 'solid-js'
+import { Component, createEffect, createSignal } from 'solid-js'
 
 import { API_ORIGIN } from '../consts'
 import { GribMessage } from '../interfaces/interfaces'
@@ -17,25 +17,27 @@ export const GribView: Component<{}> = () => {
     const [getIsLoading, setIsLoading] = createSignal(true)
     const [getIsSelectOpen, setIsSelectOpen] = createSignal(true)
     const [getIsSettingsOpen, setIsSettingsOpen] = createSignal(false)
+    const fromColor = createSignal('#0000ff')
+    const toColor = createSignal('#ffff00')
+
+    let cachedMessage: GribMessage | undefined
+    let cachedBuffer: Uint8Array | undefined
+    let cachedBitmask: Uint8Array | undefined
 
     fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
-
-            // const dump = gribArr
-            //     .filter(m => m.sections.find(s=>s.id===6)!.size > 8)
-            //     .filter(m => m.meteo.discipline === 0 && m.meteo.category === 1)
-                // .map(m => m.sections.find(s=>s.id===6)!.size)
-                // .map(m => m.bitsPerDataPoint)
-            // console.log(dump)
-
-            // TEMPORARY land-conver as here latvia is visible best
-            // const id = gribArr.findIndex(m => m.meteo.discipline===2)
-            // if (id !== undefined) onMessageClick(id)
         })
         .catch(err => console.warn(err.message))
         .finally(() => setIsLoading(false))
+
+    createEffect(() => {
+        const colors: [string, string] = [fromColor[0](), toColor[0]()]
+        if (!cachedMessage || !cachedBuffer || !canvas) return;
+
+        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors)
+    })
 
     function onMessageClick(id: number) {
         if (!canvas) throw new Error('canvas not found')
@@ -61,8 +63,11 @@ export const GribView: Component<{}> = () => {
             bitmaskPromise,
         ])
             .then(([binaryBuffer, bitmaskBuffer]) => {
-                const bitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
-                drawGrib(canvas, message, new Uint8Array(binaryBuffer), bitmask)
+                cachedMessage = message
+                cachedBuffer = new Uint8Array(binaryBuffer)
+                cachedBitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
+                const colors: [string, string] = [fromColor[0](), toColor[0]()]
+                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors)
             })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
@@ -89,6 +94,8 @@ export const GribView: Component<{}> = () => {
         </div>
         <div style={{ visibility: getIsSettingsOpen() ? 'visible' : 'hidden'}}>
             <Settings
+                fromColor={fromColor}
+                toColor={toColor}
                 triggerSettings={triggerSettings}
             />
         </div>

@@ -1,12 +1,6 @@
 import { u8ToBits } from '../helpers/u8ToBits.ts'
 import { GribMessage, MeteoGrid } from '../interfaces/interfaces.ts'
 
-export const VIOLET: RGBu8 = [127, 0, 255]
-export const YELLOW: RGBu8 = [255, 255, 0]
-export const BLUE: RGBu8 = [0, 0, 255]
-export const ORANGE: RGBu8 = [255, 43, 0]
-export const DARK_VIOLET: RGBu8 = [51, 0, 102]
-
 const IS_CROPPED = false
 
 export function drawGrib(
@@ -14,6 +8,7 @@ export function drawGrib(
     grib: GribMessage,
     buffer: Uint8Array,
     bitmask: Uint8Array | undefined,
+    colors: [string, string],
 ): void {
     const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
@@ -37,7 +32,7 @@ export function drawGrib(
     const imgData = ctx.createImageData(grid.cols, grid.rows)
     
     const fullBuffer = bitmask ? getFullBuffer(grid, buffer, bitmask, bytesPerPoint) : buffer
-    fillImageData(imgData, grid, fullBuffer, bytesPerPoint)
+    fillImageData(imgData, grid, fullBuffer, bytesPerPoint, colors)
 
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')!
@@ -57,7 +52,11 @@ function fillImageData(
     grid: MeteoGrid,
     buffer: Uint8Array,
     bytesPerPoint: number,
+    colors: [string, string],
 ) {
+    const fromColor = rgbHexToU8(colors[0])
+    const toColor = rgbHexToU8(colors[1])
+
     for (let row = 0; row < grid.rows; row++) {
         for (let col = 0; col < grid.cols; col++) {
 
@@ -66,12 +65,11 @@ function fillImageData(
 
             const firstByte = buffer[bufferI]
 
-            const color = interpolateColors(firstByte, BLUE, YELLOW)
+            const color = interpolateColors(firstByte, fromColor, toColor)
             imgData.data[index] = color[0]
             imgData.data[index + 1] = color[1]
             imgData.data[index + 2] = color[2]
             imgData.data[index + 3] = 255
-            
         }
     }
 }
@@ -108,6 +106,13 @@ function getFullBuffer(
     return newBuffer
 }
 
+function rgbHexToU8(hex: string): RGBu8 {
+    return [
+        parseInt(`0x${hex.slice(1, 3)}`),
+        parseInt(`0x${hex.slice(3, 5)}`),
+        parseInt(`0x${hex.slice(5, 7)}`),
+    ]
+}
 
 type RGBu8 = [number, number, number]
 function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBu8 {
