@@ -3,20 +3,20 @@ import { Component, createSignal } from 'solid-js'
 import { API_ORIGIN } from '../consts'
 import { GribMessage } from '../interfaces/interfaces'
 import { sortMeteoParams } from '../interfaces/meteoMapping'
-import { GribMessageView } from './GribMessage'
 import { drawGrib } from './drawGrib'
 import { Loading } from '../compontents/loading/Loading'
 import { fetchBuffer, fetchJson } from '../helpers/fetch'
 
 import styles from './grib.module.css'
+import { Select } from './Select'
+import { Settings } from './Settings'
 
 export const GribView: Component<{}> = () => {
     let canvas: HTMLCanvasElement | undefined
     const [getMessages, setMessages] = createSignal<GribMessage[]>([])
-    const [getFileName, setFileName] = createSignal('')
     const [getIsLoading, setIsLoading] = createSignal(true)
-    const [getIsSidebarOpen, setIsSidebarOper] = createSignal(true)
-    const [getSelectedMessage, setSelectedMessage] = createSignal(-1)
+    const [getIsSelectOpen, setIsSelectOpen] = createSignal(true)
+    const [getIsSettingsOpen, setIsSettingsOpen] = createSignal(false)
 
     fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
@@ -36,10 +36,6 @@ export const GribView: Component<{}> = () => {
         })
         .catch(err => console.warn(err.message))
         .finally(() => setIsLoading(false))
-    
-    fetchJson(`${API_ORIGIN}/grib-name`)
-        .then(response => setFileName(response.fileName))
-        .catch(err => console.warn(err.message))
 
     function onMessageClick(id: number) {
         if (!canvas) throw new Error('canvas not found')
@@ -67,40 +63,34 @@ export const GribView: Component<{}> = () => {
             .then(([binaryBuffer, bitmaskBuffer]) => {
                 const bitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
                 drawGrib(canvas, message, new Uint8Array(binaryBuffer), bitmask)
-                setSelectedMessage(id)
             })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
     }
-
-    function getShortFilename () { return getFileName().replace('HARMONIE_DINI_SF_', '') }
-    function triggerSidebar() { return setIsSidebarOper(!getIsSidebarOpen()) }
-    function sidebarHiddenCss() { return getIsSidebarOpen() ? '' : styles.hidden }
-    function menuHiddenCss() { return getIsSidebarOpen() ? styles.hidden : '' }
+    
+    function triggerSidebar() { return setIsSelectOpen(!getIsSelectOpen()) }
+    function triggerSettings() { return setIsSettingsOpen(!getIsSettingsOpen())}
+    function menuHiddenCss() { return getIsSelectOpen() ? styles.hidden : '' }
+    function settingsHiddenCss() { return getIsSettingsOpen() ? styles.hidden : '' }
 
     return <>
         <canvas ref={canvas} />
         <div class={styles.top}>
             <span class={`material-icons ${menuHiddenCss()}`} onClick={triggerSidebar}>menu</span>
             <span>{ getIsLoading() && <Loading /> }</span>
-            <span class='material-icons' style={{visibility:'hidden'}}>settings</span>
+            <span class={`material-icons ${settingsHiddenCss()}`} onClick={triggerSettings}>settings</span>
         </div>
-        <div class={`${styles.sidebar} ${sidebarHiddenCss()}`}>
-            <div class={styles.header}>
-                <b>{ getShortFilename() }</b>
-                <span onClick={triggerSidebar} class='material-icons'>close</span>
-            </div>
-            <ul>
-                { getMessages().map((message, i) =>
-                    <GribMessageView
-                        id={i}
-                        message={message}
-                        getSelected={()=>i===getSelectedMessage()}
-                        onMessageClick={onMessageClick}
-                    />
-                )}
-            </ul>
-            <a href='/dini'>&gt;&gt; Get latest harmonie dini sf &lt;&lt;</a>
+        <div style={{ visibility: getIsSelectOpen() ? 'visible' : 'hidden'}}>
+            <Select
+                getMessages={getMessages}
+                onMessageClick={onMessageClick}
+                triggerSidebar={triggerSidebar}
+            />
+        </div>
+        <div style={{ visibility: getIsSettingsOpen() ? 'visible' : 'hidden'}}>
+            <Settings
+                triggerSettings={triggerSettings}
+            />
         </div>
     </>
 }

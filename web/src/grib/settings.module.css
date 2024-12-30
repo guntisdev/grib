@@ -1,0 +1,26 @@
+.settings {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    background-color: rgba(255, 255, 255, 0.4);
+    height: 100%;
+    padding-left: 10px;
+    overflow-y: scroll;
+    z-index: 10;
+    transition: transform 0.3s ease-in-out;
+}
+
+.settings.hidden {
+    transform: translateX(100%);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    width: 100%;
+    padding: 3px 0;
+}
+
+.header span { cursor: pointer; font-size: 30px; }
