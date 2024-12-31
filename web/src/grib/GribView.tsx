@@ -11,6 +11,8 @@ import styles from './grib.module.css'
 import { Select } from './Select'
 import { Settings } from './Settings'
 
+const CROP_BOUNDS = { x: 1906-1-400, y: 950, width: 400, height: 300 }
+
 export const GribView: Component<{}> = () => {
     let canvas: HTMLCanvasElement | undefined
     const [getMessages, setMessages] = createSignal<GribMessage[]>([])
@@ -19,6 +21,7 @@ export const GribView: Component<{}> = () => {
     const [getIsSettingsOpen, setIsSettingsOpen] = createSignal(false)
     const fromColor = createSignal('#0000ff')
     const toColor = createSignal('#ffff00')
+    const isCrop = createSignal(false)
 
     let cachedMessage: GribMessage | undefined
     let cachedBuffer: Uint8Array | undefined
@@ -34,9 +37,10 @@ export const GribView: Component<{}> = () => {
 
     createEffect(() => {
         const colors: [string, string] = [fromColor[0](), toColor[0]()]
+        const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined
         if (!cachedMessage || !cachedBuffer || !canvas) return;
 
-        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors)
+        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds)
     })
 
     function onMessageClick(id: number) {
@@ -67,7 +71,8 @@ export const GribView: Component<{}> = () => {
                 cachedBuffer = new Uint8Array(binaryBuffer)
                 cachedBitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
                 const colors: [string, string] = [fromColor[0](), toColor[0]()]
-                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors)
+                const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined 
+                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds)
             })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
@@ -96,6 +101,7 @@ export const GribView: Component<{}> = () => {
             <Settings
                 fromColor={fromColor}
                 toColor={toColor}
+                isCrop={isCrop}
                 triggerSettings={triggerSettings}
             />
         </div>

@@ -1,7 +1,7 @@
 import { u8ToBits } from '../helpers/u8ToBits.ts'
 import { GribMessage, MeteoGrid } from '../interfaces/interfaces.ts'
 
-const IS_CROPPED = false
+export type CropBounds = { x: number, y: number, width: number, height: number }
 
 export function drawGrib(
     canvas: HTMLCanvasElement,
@@ -9,29 +9,27 @@ export function drawGrib(
     buffer: Uint8Array,
     bitmask: Uint8Array | undefined,
     colors: [string, string],
+    cropBounds: CropBounds | undefined,
 ): void {
     const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
-    // cropps latvia out of europe map
-    if (IS_CROPPED) {
-        const croppedWidth = 400
-        const croppedHeight = 300
-        const croppedX = 1906-1-croppedWidth
-        const croppedY = 950
-        const croppedBuffer = extractBbox(grib.grid, buffer, croppedX, croppedY, croppedWidth, croppedHeight, bytesPerPoint)
-        grid.cols = croppedWidth
-        grid.rows = croppedHeight
-        buffer = croppedBuffer
+    let { cols, rows } = grid
+
+    let fullBuffer = bitmask ? getFullBuffer(grid, buffer, bitmask, bytesPerPoint) : buffer
+
+    if (cropBounds) {
+        fullBuffer = extractBbox(grib.grid, fullBuffer, cropBounds, bytesPerPoint)
+        cols = cropBounds.width
+        rows = cropBounds.height
     }
 
-    canvas.width = grid.cols
-    canvas.height = grid.rows
+    canvas.width = cols
+    canvas.height = rows
     canvas.style.width = '100%'
     canvas.style.minWidth = '1280px'
     const ctx = canvas.getContext('2d')!
-    const imgData = ctx.createImageData(grid.cols, grid.rows)
+    const imgData = ctx.createImageData(cols, rows)
     
-    const fullBuffer = bitmask ? getFullBuffer(grid, buffer, bitmask, bytesPerPoint) : buffer
     fillImageData(imgData, grid, fullBuffer, bytesPerPoint, colors)
 
     const tempCanvas = document.createElement('canvas')
@@ -128,12 +126,11 @@ function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBu8 {
 function extractBbox(
     grid: MeteoGrid,
     source: Uint8Array,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    bytesPerPoint = 2,
+    cropBounds: CropBounds,
+    bytesPerPoint: number,
 ): Uint8Array {
+    const { x, y, width, height } = cropBounds
+
     if (
         x < 0
         || y < 0
@@ -147,7 +144,7 @@ function extractBbox(
     for (let row=y, i=0; row < y+height; row++) {
         const inputOffset = (row*grid.cols + x)*bytesPerPoint
         const readBytes = width*bytesPerPoint
-        const inputBuffer = source.subarray(inputOffset, inputOffset+readBytes)
+        const inputBuffer = source.slice(inputOffset, inputOffset+readBytes)
         output.set(inputBuffer, i)
         i += readBytes
     }
