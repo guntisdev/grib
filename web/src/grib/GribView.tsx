@@ -3,7 +3,7 @@ import { Component, createEffect, createSignal } from 'solid-js'
 import { API_ORIGIN } from '../consts'
 import { GribMessage } from '../interfaces/interfaces'
 import { sortMeteoParams } from '../interfaces/meteoMapping'
-import { drawGrib } from './drawGrib'
+import { drawGrib } from './draw/drawGrib'
 import { Loading } from '../compontents/loading/Loading'
 import { fetchBuffer, fetchJson } from '../helpers/fetch'
 
