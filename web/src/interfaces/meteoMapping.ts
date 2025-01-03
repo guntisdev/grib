@@ -24,7 +24,3 @@ function codeArrToNameArr(
 
     return [discipline.name, category.name, productName]
 }
-
-export function sortMeteoParams(a: GribMessage, b: GribMessage): number {
-    return `${a.meteo.discipline}-${a.meteo.category}-${a.meteo.product}` > `${b.meteo.discipline}-${b.meteo.category}-${b.meteo.product}` ? 1 : -1
-}

@@ -1,8 +1,7 @@
 import { Component, createEffect, createSignal } from 'solid-js'
 
 import { API_ORIGIN } from '../consts'
-import { GribMessage } from '../interfaces/interfaces'
-import { sortMeteoParams } from '../interfaces/meteoMapping'
+import { GribMessage, MeteoParam } from '../interfaces/interfaces'
 import { drawGrib } from './draw/drawGrib'
 import { Loading } from '../compontents/loading/Loading'
 import { fetchBuffer, fetchJson } from '../helpers/fetch'
@@ -106,4 +105,26 @@ export const GribView: Component<{}> = () => {
             />
         </div>
     </>
+}
+
+const topMeteoParams = [
+    [0, 1, 52],
+    [0, 1, 192],
+    // [0, 0, 0],
+    [0, 2, 1],
+    [0, 2, 22],
+]
+function sortMeteoParams(a: GribMessage, b: GribMessage): number {
+    const aIndex = getTopIndex(a.meteo)
+    const bIndex = getTopIndex(b.meteo)
+    if (aIndex === bIndex) {
+        return `${a.meteo.discipline}-${a.meteo.category}-${a.meteo.product}` > `${b.meteo.discipline}-${b.meteo.category}-${b.meteo.product}` ? 1 : -1
+    } else {
+        return aIndex > bIndex ? 1 : -1
+    }
+}
+
+function getTopIndex(meteo: MeteoParam): number {
+    const index = topMeteoParams.findIndex(([p1, p2, p3]) => p1 === meteo.discipline && p2 === meteo.category && p3 === meteo.product)
+    return index === -1 ? Infinity : index
 }
