@@ -37,7 +37,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     const messageLength = toInt(initBuffer.slice(8, 16))
     // console.log(messageLength)
     const discipline = initBuffer[6]
-    const meteo = { discipline, category: -1, product: -1, subType: 'none' } // to be updated in 4th section
+    const meteo = { discipline, category: -1, product: -1, subType: 'none', levelType: -1, levelValue: -1 } // to be updated in 4th section
     const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
     const version = initBuffer[7]
     let bitsPerDataPoint = 0
@@ -67,11 +67,13 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
             case 4:
                 meteo.category = buffer[5]
                 meteo.product = buffer[6]
+                meteo.levelType = buffer[18]
+                meteo.levelValue = buffer[23]
                 if (buffer[4] === 1) meteo.subType = 'now'
                 if (buffer[4] === 11) meteo.subType = 'avg'
                 // 0 = No rain, 1 = Drizzle, 2 = Light rain, 3 = Moderate rain, 4 Heavy rain
-                // if (meteo.category === 1) {
-                //     console.log(buffer)
+                // if (meteo.category === 0 && meteo.product === 0) {
+                //     console.log(buffer[18], buffer[23])
                 // }
                 break;
             case 5:

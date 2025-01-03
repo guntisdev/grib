@@ -1,4 +1,4 @@
-import { MeteoParam, METEO_TREE, GribMessage } from './interfaces.ts'
+import { MeteoParam, METEO_TREE } from './interfaces.ts'
 
 const UNKNOWN = '???'
 

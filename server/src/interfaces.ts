@@ -4,6 +4,9 @@ export type MeteoParam = {
     discipline: number, // 0=meteo, 1=hydro, 2=land surface, 3=space products
     category: number, // 0=temperature, 1=moisture, 6=cloud, 19=atmospheric
     product: number,
+    subType: string, // now or over time avg/sum
+    levelType: number, // 102 - entire atmosphere, 103 - above ground, above sea level
+    levelValue: number, // meters above ground/sea level
 }
 
 export type MeteoGrid = {

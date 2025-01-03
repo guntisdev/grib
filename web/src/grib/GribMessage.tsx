@@ -7,9 +7,13 @@ export const GribMessageView: Component<{
     getSelected: () => boolean,
     onMessageClick: (id: number) => void,
 }> = ({ id, message, getSelected, onMessageClick }) => {
-    const { discipline, category, product, subType } = message.meteo
+    const { discipline, category, product, subType, levelType, levelValue } = message.meteo
     const shortTitle = message.title.split(', ').slice(1).join(', ')
-    const text = `${discipline}-${category}-${product}-${subType} ${shortTitle}`
+    let text = `${discipline}-${category}-${product}-${subType}`
+    if (discipline === 0 && category === 0 && product === 0) {
+        text += ` ${levelType}-${levelValue}`
+    }
+    text += ` ${shortTitle}`
 
     return <li
         style={{ 'font-weight': getSelected() ? 'bold' : 'normal' }}
