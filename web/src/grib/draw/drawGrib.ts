@@ -2,6 +2,7 @@ import { interpolateColors } from '../../helpers/interpolateColors.ts'
 import { GribMessage, MeteoParam } from '../../interfaces/interfaces.ts'
 import { applyBitmask } from './bitmask.ts'
 import { extractFromBounds } from './bounds.ts'
+import { categoricalRainColors } from './categoricalRain.ts'
 import { precipitationColors } from './precipitation.ts'
 import { temperatureColors } from './temperature.ts'
 
@@ -50,6 +51,7 @@ export function drawGrib(
 }
 
 const CATEGORICAL_RAIN = [0, 1, 192]
+const PRECIPITATION = [0, 1, 52]
 const TEMPERATURE = [0, 0, 0]
 
 function fillImageData(
@@ -59,7 +61,7 @@ function fillImageData(
     bytesPerPoint: number,
     colors: [string, string],
 ) {
-    const { meteo, conversion } = grib
+    const { meteo, conversion, bitsPerDataPoint } = grib
     const fromColor = rgbHexToU8(colors[0])
     const toColor = rgbHexToU8(colors[1])
 
@@ -75,11 +77,15 @@ function fillImageData(
 
             let color = [255, 255, 255, 255]
             if (isEqual(meteo, CATEGORICAL_RAIN)) {
-                color = precipitationColors(firstByte)
+                color = categoricalRainColors(firstByte)
+            }
+            else if (isEqual(meteo, PRECIPITATION)) {
+                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                color = precipitationColors(encodedValue, conversion)
             }
             else if (isEqual(meteo, TEMPERATURE)) {
-                const temp16bit = toInt(buffer.slice(bufferI, bufferI+2))
-                color = temperatureColors(temp16bit, conversion)
+                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                color = temperatureColors(encodedValue, conversion)
             } 
             else {
                 color = interpolateColors(firstByte, fromColor, toColor)

@@ -1,43 +1,51 @@
+import { interpolateColors } from '../../helpers/interpolateColors'
+import { MeteoConversion } from '../../interfaces/interfaces'
+import { ColorEntry, PRECIPITATION } from './constants'
+
 type RGBAu8 = [number, number, number, number]
 
-const FOG: RGBAu8 = [254, 248, 0, 255] // 'fef800'
-const FOG_FREEZING: RGBAu8 = [194, 188, 0, 255] // 'c2bc00'
-const RAIN_LIGHT: RGBAu8 = [0, 255, 0, 255] // '00ff00'
-const RAIN_MODERATE: RGBAu8 = [0, 197, 0, 255] // '00c500'
-const RAIN_HEAVY: RGBAu8 = [0, 132, 0, 255] // '008400'
-const ICE_LIGHT: RGBAu8 = [255, 32, 55, 255] // 'ff2037'
-const ICE_HEAVY: RGBAu8 = [220, 0, 0, 255] // 'dc0000'
-export function precipitationColors(value: number): RGBAu8 {
-    switch (value) {
-        case 0:
-            return FOG
-        case 1*32:
-            return FOG_FREEZING
-        case 2*32:
-            return RAIN_LIGHT
-        case 3*32:
-            return RAIN_MODERATE
-        case 4*32:
-            return RAIN_HEAVY
-        case 5*32:
-            return ICE_LIGHT
-        case 6*32:
-            return ICE_HEAVY
-        default:
-            return [255, 255, 255, 0]
-    }
+const IS_INTERPOLATED = true
+
+export function precipitationColors(
+    encodedValue: number,
+    { reference, binaryScale, decimalScale}: MeteoConversion,
+): RGBAu8 {
+    const rainMM = (reference + encodedValue * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale) / 1000
+
+    return IS_INTERPOLATED
+        ? colorFromTempInterpolated(rainMM)
+        : colorFromTempThreshold(rainMM)
 }
 
-/* FROM CHATGPT
-0 = No rain
-1 * 32 = 32 (Drizzle)
-2 * 32 = 64 (Light rain)
-3 * 32 = 96 (Moderate rain)
-4 * 32 = 128 (Heavy rain)
-5 * 32 = 160 (Very heavy rain, if applicable)
-6 * 32 = 192 (Extreme rain, if applicable)
-*/
+function colorFromTempThreshold(value: number): [number, number, number, number] {
+    const entries = PRECIPITATION.filter(t => t.value <= value)
 
-export function hexToU8(hex: string): [number, number, number] {
-    return [parseInt('0x'+hex.slice(0, 2)), parseInt('0x'+hex.slice(2, 4)), parseInt('0x'+hex.slice(4, 6))]
+    return entries.length === 0 ? PRECIPITATION[PRECIPITATION.length-1].color : entries[0].color
+}
+
+function colorFromTempInterpolated(value: number): [number, number, number, number] {
+    const minIdx = PRECIPITATION.length-1
+    if (value >= PRECIPITATION[0].value) return PRECIPITATION[0].color
+    if (value <= PRECIPITATION[minIdx].value) return PRECIPITATION[minIdx].color
+
+    let closeMax: ColorEntry = PRECIPITATION[0]
+    let closeMin: ColorEntry = PRECIPITATION[minIdx]
+    for (let i=0; i<PRECIPITATION.length; i++) {
+        const currentDeg = PRECIPITATION[i].value
+        if (currentDeg >= value && currentDeg < closeMax.value) {
+            closeMax = PRECIPITATION[i]
+        }
+
+        if (currentDeg <= value && currentDeg > closeMin.value) {
+            closeMin = PRECIPITATION[i]
+        }
+    }
+
+    const maxDeg = closeMax.color.slice(0, 3) as [number, number, number]
+    const minDeg = closeMin.color.slice(0, 3) as [number, number, number]
+    const scale = Math.abs(closeMax.value - closeMin.value)
+    const delta = 255*(value - closeMin.value)/scale
+    const rgba = interpolateColors(delta, minDeg, maxDeg)
+
+    return rgba
 }
