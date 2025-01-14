@@ -1,7 +1,8 @@
+import { interpolateColors } from '../../helpers/interpolateColors'
 import { MeteoConversion } from '../../interfaces/interfaces'
-import { interpolateColors } from './drawGrib'
 
-const TEMPERATURES: { degree: number, color: [number, number, number, number]}[] = [
+type TempEntry = { degree: number, color: [number, number, number, number]}
+const TEMPERATURES: TempEntry[] = [
     { degree: 50, color: [133, 0, 62, 255] },
     { degree: 40, color: [195, 0, 0, 255] },
     { degree: 30, color: [255, 76, 56, 255] },
@@ -39,17 +40,24 @@ function colorFromTempInterpolated(temperature: number): [number, number, number
     if (temperature >= TEMPERATURES[0].degree) return TEMPERATURES[0].color
     if (temperature <= TEMPERATURES[coldestI].degree) return TEMPERATURES[coldestI].color
 
-    const entry = TEMPERATURES.find(t => t.degree === temperature)
-    if (entry) return entry.color
+    let closeMax: TempEntry = TEMPERATURES[0]
+    let closeMin: TempEntry = TEMPERATURES[coldestI]
+    for (let i=0; i<TEMPERATURES.length; i++) {
+        const currentDeg = TEMPERATURES[i].degree
+        if (currentDeg >= temperature && currentDeg < closeMax.degree) {
+            closeMax = TEMPERATURES[i]
+        }
 
-    // returns two color
-    const entries = TEMPERATURES.filter(t => Math.abs(t.degree - temperature) < 10)
+        if (currentDeg <= temperature && currentDeg > closeMin.degree) {
+            closeMin = TEMPERATURES[i]
+        }
+    }
 
-    const c1 = entries[0].color.slice(0, 3) as [number, number, number]
-    const c2 = entries[1].color.slice(0, 3) as [number, number, number]
-    const scale = Math.abs(entries[0].degree - entries[1].degree)
-    const delta = 255*(temperature - entries[1].degree)/scale
-    const rgba = interpolateColors(delta, c2, c1)
+    const maxDeg = closeMax.color.slice(0, 3) as [number, number, number]
+    const minDeg = closeMin.color.slice(0, 3) as [number, number, number]
+    const scale = Math.abs(closeMax.degree - closeMin.degree)
+    const delta = 255*(temperature - closeMin.degree)/scale
+    const rgba = interpolateColors(delta, minDeg, maxDeg)
 
     return rgba
 }

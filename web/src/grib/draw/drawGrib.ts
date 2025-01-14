@@ -1,3 +1,4 @@
+import { interpolateColors } from '../../helpers/interpolateColors.ts'
 import { GribMessage, MeteoParam } from '../../interfaces/interfaces.ts'
 import { applyBitmask } from './bitmask.ts'
 import { extractFromBounds } from './bounds.ts'
@@ -58,24 +59,29 @@ function fillImageData(
     bytesPerPoint: number,
     colors: [string, string],
 ) {
-    const { meteo, grid, conversion } = grib
+    const { meteo, conversion } = grib
     const fromColor = rgbHexToU8(colors[0])
     const toColor = rgbHexToU8(colors[1])
 
-    for (let row = 0; row < grid.rows; row++) {
-        for (let col = 0; col < grid.cols; col++) {
+    const cols = imgData.width
+    const rows = imgData.height
 
-            const bufferI = (row * grid.cols + col) * bytesPerPoint
-            const index = (row * grid.cols + col) * 4
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+
+            const bufferI = (row * cols + col) * bytesPerPoint
+            const index = (row * cols + col) * 4
             const firstByte = buffer[bufferI]
 
             let color = [255, 255, 255, 255]
             if (isEqual(meteo, CATEGORICAL_RAIN)) {
                 color = precipitationColors(firstByte)
-            } else if (isEqual(meteo, TEMPERATURE)) {
+            }
+            else if (isEqual(meteo, TEMPERATURE)) {
                 const temp16bit = toInt(buffer.slice(bufferI, bufferI+2))
                 color = temperatureColors(temp16bit, conversion)
-            } else {
+            } 
+            else {
                 color = interpolateColors(firstByte, fromColor, toColor)
             }
 
@@ -97,16 +103,6 @@ function rgbHexToU8(hex: string): RGBu8 {
 }
 
 type RGBu8 = [number, number, number]
-type RGBAu8 = [number, number, number, number]
-export function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBAu8 {
-    const color = a.slice(0).map((from, i) => {
-        const to = b[i]
-        const delta = (to - from) * (value/255)
-        return from + delta
-    })
-
-    return [...color, 255] as RGBAu8
-}
 
 function isEqual(meteo: MeteoParam, arr: number[]): boolean {
     const arr2 = [meteo.discipline, meteo.category, meteo.product]
