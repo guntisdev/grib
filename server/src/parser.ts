@@ -38,6 +38,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     // console.log(messageLength)
     const discipline = initBuffer[6]
     const meteo = { discipline, category: -1, product: -1, subType: 'none', levelType: -1, levelValue: -1 } // to be updated in 4th section
+    const conversion = { reference: -1, binaryScale: -1, decimalScale: -1 }
     const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
     const version = initBuffer[7]
     let bitsPerDataPoint = 0
@@ -78,6 +79,19 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 break;
             case 5:
                 bitsPerDataPoint = buffer[15]
+                // if (meteo.category === 0 && meteo.product === 0) console.log(buffer)
+
+                    /*
+                    - Reference value (R): The minimum value of the parameter (often referred to as the offset). 4 byte float
+                    - Binary scale factor (B): Determines how the values are scaled. 2 byte int
+                    - Decimal scale factor (D): Adjusts the precision of the values. 2 byte int
+
+                    Physical Value=(R+Encoded Value×2^B)×10^−D
+                */
+                conversion.reference = toFloat(buffer.slice(7, 11))
+                conversion.binaryScale = -buffer[12]
+                conversion.decimalScale = buffer[14]
+                
                 break;
         }
 
@@ -92,6 +106,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         grid,
         title: meteoCodeToName(meteo).join(', '),
         bitsPerDataPoint,
+        conversion,
         sections,
     }
 }
@@ -110,6 +125,10 @@ export async function extractBinaryChunk(filePath: string, offset: number, lengt
 
 export function toInt (bytes: Uint8Array): number {
     return bytes.reduce((acc, curr) => acc * 256 + curr)
+}
+
+export function toFloat(bytes: Uint8Array): number {
+    return new DataView(bytes.buffer).getFloat32(0, false)
 }
 
 export function toString (bytes: Uint8Array): string {

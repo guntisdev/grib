@@ -2,6 +2,7 @@ import { GribMessage, MeteoParam } from '../../interfaces/interfaces.ts'
 import { applyBitmask } from './bitmask.ts'
 import { extractFromBounds } from './bounds.ts'
 import { precipitationColors } from './precipitation.ts'
+import { temperatureColors } from './temperature.ts'
 
 export type CropBounds = { x: number, y: number, width: number, height: number }
 
@@ -48,6 +49,7 @@ export function drawGrib(
 }
 
 const CATEGORICAL_RAIN = [0, 1, 192]
+const TEMPERATURE = [0, 0, 0]
 
 function fillImageData(
     imgData: ImageData,
@@ -56,7 +58,7 @@ function fillImageData(
     bytesPerPoint: number,
     colors: [string, string],
 ) {
-    const { meteo, grid } = grib
+    const { meteo, grid, conversion } = grib
     const fromColor = rgbHexToU8(colors[0])
     const toColor = rgbHexToU8(colors[1])
 
@@ -70,9 +72,11 @@ function fillImageData(
             let color = [255, 255, 255, 255]
             if (isEqual(meteo, CATEGORICAL_RAIN)) {
                 color = precipitationColors(firstByte)
+            } else if (isEqual(meteo, TEMPERATURE)) {
+                const temp16bit = toInt(buffer.slice(bufferI, bufferI+2))
+                color = temperatureColors(temp16bit, conversion)
             } else {
                 color = interpolateColors(firstByte, fromColor, toColor)
-                
             }
 
             imgData.data[index] = color[0]
@@ -94,7 +98,7 @@ function rgbHexToU8(hex: string): RGBu8 {
 
 type RGBu8 = [number, number, number]
 type RGBAu8 = [number, number, number, number]
-function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBAu8 {
+export function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBAu8 {
     const color = a.slice(0).map((from, i) => {
         const to = b[i]
         const delta = (to - from) * (value/255)
@@ -107,4 +111,8 @@ function interpolateColors(value: number, a: RGBu8, b: RGBu8): RGBAu8 {
 function isEqual(meteo: MeteoParam, arr: number[]): boolean {
     const arr2 = [meteo.discipline, meteo.category, meteo.product]
     return arr.length === arr2.length && arr.every((value, index) => value === arr2[index])
+}
+
+function toInt (bytes: Uint8Array): number {
+    return bytes.reduce((acc, curr) => acc * 256 + curr)
 }

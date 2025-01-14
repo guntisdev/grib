@@ -15,6 +15,12 @@ export type MeteoGrid = {
     template: number, // 0 - regular lat/lon
 }
 
+export type MeteoConversion = {
+    reference: number, // float
+    binaryScale: number, // int
+    decimalScale: number, // int
+}
+
 export type GribMessage = {
     offset: number,
     size: number,
@@ -23,6 +29,7 @@ export type GribMessage = {
     meteo: MeteoParam,
     grid: MeteoGrid,
     bitsPerDataPoint: number,
+    conversion: MeteoConversion,
     sections: GribSection[],
 }
 

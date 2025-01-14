@@ -9,6 +9,12 @@ export type MeteoParam = {
     levelValue: number, // meters above ground/sea level
 }
 
+export type MeteoConversion = {
+    reference: number, // float
+    binaryScale: number, // int
+    decimalScale: number, // int
+}
+
 export type MeteoGrid = {
     cols: number,
     rows: number,
@@ -24,6 +30,7 @@ export type GribMessage = {
     grid: MeteoGrid,
     bitsPerDataPoint: number,
     subType: string,
+    conversion: MeteoConversion,
     sections: GribSection[],
 }
 
