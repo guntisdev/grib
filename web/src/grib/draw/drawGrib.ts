@@ -51,7 +51,8 @@ export function drawGrib(
 }
 
 const CATEGORICAL_RAIN = [0, 1, 192]
-const PRECIPITATION = [0, 1, 52]
+const TOTAL_PRECIPITATION = [0, 1, 52]
+const RAIN_PRECIPITATION = [0, 1, 65]
 const TEMPERATURE = [0, 0, 0]
 
 function fillImageData(
@@ -79,7 +80,11 @@ function fillImageData(
             if (isEqual(meteo, CATEGORICAL_RAIN)) {
                 color = categoricalRainColors(firstByte)
             }
-            else if (isEqual(meteo, PRECIPITATION)) {
+            else if (isEqual(meteo, TOTAL_PRECIPITATION)) {
+                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                color = precipitationColors(encodedValue, conversion)
+            }
+            else if (isEqual(meteo, RAIN_PRECIPITATION)) {
                 const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = precipitationColors(encodedValue, conversion)
             }

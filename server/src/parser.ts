@@ -39,7 +39,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     const discipline = initBuffer[6]
     const meteo = { discipline, category: -1, product: -1, subType: 'none', levelType: -1, levelValue: -1 } // to be updated in 4th section
     const conversion = { reference: -1, binaryScale: -1, decimalScale: -1 }
-    const grid = { cols: -1, rows: -1, template: -1 } // to be updated in 3rd section
+    const grid = { cols: -1, rows: -1, template: -1, lambert: [-1] } // to be updated in 3rd section
     const version = initBuffer[7]
     let bitsPerDataPoint = 0
     position += 16
@@ -62,7 +62,9 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
             case 3:
                 grid.cols = toInt(buffer.slice(26, 30))
                 grid.rows = toInt(buffer.slice(30, 34))
-                grid.template = buffer[1]
+                grid.template = toInt(buffer.slice(8, 10)) // 30 - lambert projection
+                grid.lambert = [toInt(buffer.slice(34, 38)), toInt(buffer.slice(38, 42)), toInt(buffer.slice(42, 46)), toInt(buffer.slice(46, 50))]
+                // console.log(buffer)
                 // data points toInt(buffer.slice(2, 6))
                 break
             case 4:
