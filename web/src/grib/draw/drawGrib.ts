@@ -77,18 +77,18 @@ function fillImageData(
             const firstByte = buffer[bufferI]
 
             let color = [255, 255, 255, 255]
-            if (isEqual(meteo, CATEGORICAL_RAIN)) {
+            if (isMeteoEqual(meteo, CATEGORICAL_RAIN)) {
                 color = categoricalRainColors(firstByte)
             }
-            else if (isEqual(meteo, TOTAL_PRECIPITATION)) {
+            else if (isMeteoEqual(meteo, TOTAL_PRECIPITATION)) {
                 const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = precipitationColors(encodedValue, conversion)
             }
-            else if (isEqual(meteo, RAIN_PRECIPITATION)) {
+            else if (isMeteoEqual(meteo, RAIN_PRECIPITATION)) {
                 const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = precipitationColors(encodedValue, conversion)
             }
-            else if (isEqual(meteo, TEMPERATURE)) {
+            else if (isMeteoEqual(meteo, TEMPERATURE)) {
                 const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = temperatureColors(encodedValue, conversion)
             } 
@@ -115,7 +115,7 @@ function rgbHexToU8(hex: string): RGBu8 {
 
 type RGBu8 = [number, number, number]
 
-function isEqual(meteo: MeteoParam, arr: number[]): boolean {
+export function isMeteoEqual(meteo: MeteoParam, arr: number[]): boolean {
     const arr2 = [meteo.discipline, meteo.category, meteo.product]
     return arr.length === arr2.length && arr.every((value, index) => value === arr2[index])
 }

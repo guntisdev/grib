@@ -73,7 +73,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 meteo.levelType = buffer[18]
                 meteo.levelValue = buffer[23]
                 if (buffer[4] === 1) meteo.subType = 'now'
-                if (buffer[4] === 11) meteo.subType = 'avg'
+                if (buffer[4] === 11) meteo.subType = 'period'
                 // 0 = No rain, 1 = Drizzle, 2 = Light rain, 3 = Moderate rain, 4 Heavy rain
                 // if (meteo.category === 0 && meteo.product === 0) {
                 //     console.log(buffer[18], buffer[23])
