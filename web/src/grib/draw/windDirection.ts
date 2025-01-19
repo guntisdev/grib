@@ -26,7 +26,10 @@ export function windSpeedColors(
     return valueToColorInterpolated(windSpeed, WIND_SPEED)
 }
 
-export function fetchWindData(gribArr: GribMessage[]): Promise<[ArrayBuffer, undefined]> {
+export function fetchWindData(
+    customMessage: GribMessage,
+    gribArr: GribMessage[],
+): Promise<[GribMessage[], ArrayBuffer[], ArrayBuffer[]]> {
     const windU = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===2 && m.meteo.levelType===103 && m.meteo.levelValue===10)
     const windV = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===3 && m.meteo.levelType===103 && m.meteo.levelValue===10)
     if (!windU || !windV) throw new Error('Didnt found u/v components of wind')
@@ -48,6 +51,8 @@ export function fetchWindData(gribArr: GribMessage[]): Promise<[ArrayBuffer, und
         const buffer = new Uint8Array(bufferU.byteLength + bufferV.byteLength)
         buffer.set(new Uint8Array(bufferU))
         buffer.set(new Uint8Array(bufferV), bufferU.byteLength)
-        return [buffer, undefined]
+        const messages = [customMessage, windU, windV]
+        const buffers = [bufferU, bufferU, bufferV]
+        return [messages, buffers, []]
     })
 }

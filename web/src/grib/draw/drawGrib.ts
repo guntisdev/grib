@@ -11,22 +11,26 @@ export type CropBounds = { x: number, y: number, width: number, height: number }
 
 export function drawGrib(
     canvas: HTMLCanvasElement,
-    grib: GribMessage,
-    buffer: Uint8Array,
-    bitmask: Uint8Array | undefined,
+    messages: GribMessage[],
+    buffers: Uint8Array[],
+    bitmasks: Uint8Array[],
     colors: [string, string],
     cropBounds: CropBounds | undefined,
-    gribArr: GribMessage[],
 ): void {
+    // normally we have one message/buffer/bitmask?. special cases have multiple like wind direction
+    const [grib] = messages
+
     const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
     let { cols, rows } = grid
 
-    let fullBuffer = bitmask ? applyBitmask(grid, buffer, bitmask, bytesPerPoint) : buffer
+    let modifiedBuffers = buffers.map((buffer, i) => {
+        return bitmasks[i] ? applyBitmask(grid, buffer, bitmasks[i], bytesPerPoint) : buffer
+    })
 
     if (cropBounds) {
         // TODO crop out wind direction correctly (where 2 combined u and v data)
-        fullBuffer = extractFromBounds(grib.grid, fullBuffer, cropBounds, bytesPerPoint)
+        modifiedBuffers = modifiedBuffers.map(buffer => extractFromBounds(grib.grid, buffer, cropBounds, bytesPerPoint))
         cols = cropBounds.width
         rows = cropBounds.height
     }
@@ -38,7 +42,7 @@ export function drawGrib(
     const ctx = canvas.getContext('2d')!
     const imgData = ctx.createImageData(cols, rows)
     
-    fillImageData(imgData, grib, fullBuffer, bytesPerPoint, colors, gribArr)
+    fillImageData(imgData, messages, modifiedBuffers, bytesPerPoint, colors)
 
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')!
@@ -63,12 +67,14 @@ const WIND_SPEED_GUST = [0, 2, 22]
 
 function fillImageData(
     imgData: ImageData,
-    grib: GribMessage,
-    buffer: Uint8Array,
+    messages: GribMessage[],
+    buffers: Uint8Array[],
     bytesPerPoint: number,
     colors: [string, string],
-    gribArr: GribMessage[],
 ) {
+    const [grib] = messages
+    const [buffer] = buffers
+
     const { meteo, conversion, bitsPerDataPoint } = grib
     const fromColor = rgbHexToU8(colors[0])
     const toColor = rgbHexToU8(colors[1])
@@ -98,11 +104,10 @@ function fillImageData(
                 color = temperatureColors(encodedValue, conversion)
             }
             else if (isMeteoEqual(meteo, WIND_DIRECTION)) {
-                const encodedValU = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
-                const vOffset = buffer.length/2
-                const encodedValV = toInt(buffer.slice(bufferI+vOffset, bufferI+vOffset+bitsPerDataPoint/8))
-                const metaU = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===2 && m.meteo.levelType===103 && m.meteo.levelValue===10)
-                const metaV = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===3 && m.meteo.levelType===103 && m.meteo.levelValue===10)
+                const [, bufferU, bufferV] = buffers
+                const encodedValU = toInt(bufferU.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                const encodedValV = toInt(bufferV.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                const [, metaU, metaV] = messages // first message fake one 0-2-192
                 color = windDirectionColors(encodedValU, encodedValV, metaU!.conversion, metaV!.conversion)
             }
             else if (isMeteoEqual(meteo, WIND_SPEED)) {

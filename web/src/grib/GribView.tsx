@@ -23,9 +23,9 @@ export const GribView: Component<{}> = () => {
     const toColor = createSignal('#ffff00')
     const isCrop = createSignal(false)
 
-    let cachedMessage: GribMessage | undefined
-    let cachedBuffer: Uint8Array | undefined
-    let cachedBitmask: Uint8Array | undefined
+    let cachedMessages: GribMessage[] = []
+    let cachedBuffers: Uint8Array[] = []
+    let cachedBitmasks: Uint8Array[] = []
 
     fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
@@ -45,9 +45,9 @@ export const GribView: Component<{}> = () => {
     createEffect(() => {
         const colors: [string, string] = [fromColor[0](), toColor[0]()]
         const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined
-        if (!cachedMessage || !cachedBuffer || !canvas) return;
+        if (!cachedMessages.length || !cachedBuffers.length || !canvas) return;
 
-        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds, getMessages())
+        drawGrib(canvas, cachedMessages, cachedBuffers, cachedBitmasks, colors, cropBounds)
     })
 
     function onMessageClick(id: number) {
@@ -59,8 +59,8 @@ export const GribView: Component<{}> = () => {
         const bitmaskOffset = bitmaskSection.offset + 6
         const bitmaskLength = bitmaskSection.size - 6
         const bitmaskPromise = bitmaskSection.size > 6
-            ? fetchBuffer(`${API_ORIGIN}/binary-chunk/${bitmaskOffset}/${bitmaskLength}`)
-            : Promise.resolve(undefined)
+            ? fetchBuffer(`${API_ORIGIN}/binary-chunk/${bitmaskOffset}/${bitmaskLength}`).then(b=>[b])
+            : Promise.resolve([])
 
         const binarySection = message.sections.find(section => section.id === 7)
         if (!binarySection) throw new Error('Binary section not found')
@@ -69,20 +69,21 @@ export const GribView: Component<{}> = () => {
 
         setIsLoading(true)
 
-        const fetchPromise = message.meteo.discipline === 0 && message.meteo.category === 2 && message.meteo.product === 192
-            ? fetchWindData(getMessages())
+        const fetchPromise: Promise<[GribMessage[], ArrayBuffer[], ArrayBuffer[]]> = message.meteo.discipline === 0 && message.meteo.category === 2 && message.meteo.product === 192
+            ? fetchWindData(message, getMessages())
             : Promise.all([
-                fetchBuffer(`${API_ORIGIN}/binary-chunk/${binaryOffset}/${binaryLength}`),
+                Promise.resolve([message]),
+                fetchBuffer(`${API_ORIGIN}/binary-chunk/${binaryOffset}/${binaryLength}`).then(b=>[b]),
                 bitmaskPromise,
             ])
         
-        fetchPromise.then(([binaryBuffer, bitmaskBuffer]) => {
-                cachedMessage = message
-                cachedBuffer = new Uint8Array(binaryBuffer)
-                cachedBitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
+        fetchPromise.then(([messages, binaryBuffers, bitmasks]) => {
+                cachedMessages = messages
+                cachedBuffers = binaryBuffers.map(b => new Uint8Array(b))
+                cachedBitmasks = bitmasks.map(b => new Uint8Array(b))
                 const colors: [string, string] = [fromColor[0](), toColor[0]()]
                 const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined 
-                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds, getMessages())
+                drawGrib(canvas, cachedMessages, cachedBuffers, cachedBitmasks, colors, cropBounds)
             })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
