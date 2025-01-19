@@ -20,17 +20,17 @@ export function drawGrib(
     // normally we have one message/buffer/bitmask?. special cases have multiple like wind direction
     const [grib] = messages
 
-    const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
     let { cols, rows } = grid
 
     let modifiedBuffers = buffers.map((buffer, i) => {
+        const bytesPerPoint = messages[i].bitsPerDataPoint / 8
         return bitmasks[i] ? applyBitmask(grid, buffer, bitmasks[i], bytesPerPoint) : buffer
     })
 
     if (cropBounds) {
         // TODO crop out wind direction correctly (where 2 combined u and v data)
-        modifiedBuffers = modifiedBuffers.map(buffer => extractFromBounds(grib.grid, buffer, cropBounds, bytesPerPoint))
+        modifiedBuffers = modifiedBuffers.map(buffer => extractFromBounds(grib, buffer, cropBounds))
         cols = cropBounds.width
         rows = cropBounds.height
     }
@@ -42,7 +42,7 @@ export function drawGrib(
     const ctx = canvas.getContext('2d')!
     const imgData = ctx.createImageData(cols, rows)
     
-    fillImageData(imgData, messages, modifiedBuffers, bytesPerPoint, colors)
+    fillImageData(imgData, messages, modifiedBuffers, colors)
 
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')!
@@ -69,13 +69,13 @@ function fillImageData(
     imgData: ImageData,
     messages: GribMessage[],
     buffers: Uint8Array[],
-    bytesPerPoint: number,
     colors: [string, string],
 ) {
     const [grib] = messages
     const [buffer] = buffers
 
     const { meteo, conversion, bitsPerDataPoint } = grib
+    const bytesPerPoint = grib.bitsPerDataPoint / 8
     const fromColor = rgbHexToU8(colors[0])
     const toColor = rgbHexToU8(colors[1])
 

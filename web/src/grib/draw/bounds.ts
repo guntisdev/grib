@@ -1,12 +1,13 @@
-import { MeteoGrid } from '../../interfaces/interfaces'
+import { GribMessage } from '../../interfaces/interfaces'
 import { CropBounds } from './drawGrib'
 
 export function extractFromBounds(
-    grid: MeteoGrid,
+    grib: GribMessage,
     source: Uint8Array,
     cropBounds: CropBounds,
-    bytesPerPoint: number,
 ): Uint8Array {
+    const { grid, bitsPerDataPoint } = grib
+    const bytesPerPoint = bitsPerDataPoint / 8
     const { x, y, width, height } = cropBounds
 
     if (
