@@ -9,6 +9,7 @@ import { fetchBuffer, fetchJson } from '../helpers/fetch'
 import styles from './grib.module.css'
 import { Select } from './Select'
 import { Settings } from './Settings'
+import { fetchWindData } from './draw/windDirection'
 
 const CROP_BOUNDS = { x: 1906-1-400, y: 950, width: 400, height: 300 }
 
@@ -28,6 +29,13 @@ export const GribView: Component<{}> = () => {
 
     fetchJson(`${API_ORIGIN}/grib-structure`)
         .then(async (gribArr: GribMessage[]) => {
+            const windSpeed = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===1)
+            if (windSpeed) {
+                const modifiedWindSpeed = structuredClone(windSpeed)
+                modifiedWindSpeed.meteo = {...modifiedWindSpeed.meteo, product: 192}
+                modifiedWindSpeed.title = 'meteorologic, momentum, wind direction 10m (calc u,v)'
+                gribArr.push(modifiedWindSpeed)
+            }
             gribArr.sort(sortMeteoParams)
             setMessages(gribArr)
         })
@@ -61,11 +69,14 @@ export const GribView: Component<{}> = () => {
 
         setIsLoading(true)
 
-        Promise.all([
-            fetchBuffer(`${API_ORIGIN}/binary-chunk/${binaryOffset}/${binaryLength}`),
-            bitmaskPromise,
-        ])
-            .then(([binaryBuffer, bitmaskBuffer]) => {
+        const fetchPromise = message.meteo.discipline === 0 && message.meteo.category === 2 && message.meteo.product === 192
+            ? fetchWindData(getMessages())
+            : Promise.all([
+                fetchBuffer(`${API_ORIGIN}/binary-chunk/${binaryOffset}/${binaryLength}`),
+                bitmaskPromise,
+            ])
+        
+        fetchPromise.then(([binaryBuffer, bitmaskBuffer]) => {
                 cachedMessage = message
                 cachedBuffer = new Uint8Array(binaryBuffer)
                 cachedBitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
@@ -111,6 +122,7 @@ const topMeteoParams = [
     [0, 1, 52],
     [0, 1, 192],
     // [0, 0, 0],
+    [0, 2, 192],
     [0, 2, 1],
     [0, 2, 22],
 ]

@@ -5,6 +5,7 @@ import { extractFromBounds } from './bounds.ts'
 import { categoricalRainColors } from './categoricalRain.ts'
 import { precipitationColors } from './precipitation.ts'
 import { temperatureColors } from './temperature.ts'
+import { windDirectionColors, windSpeedColors } from './windDirection.ts'
 
 export type CropBounds = { x: number, y: number, width: number, height: number }
 
@@ -54,6 +55,9 @@ const CATEGORICAL_RAIN = [0, 1, 192]
 const TOTAL_PRECIPITATION = [0, 1, 52]
 const RAIN_PRECIPITATION = [0, 1, 65]
 const TEMPERATURE = [0, 0, 0]
+const WIND_DIRECTION = [0, 2, 192]
+const WIND_SPEED = [0, 2, 1]
+const WIND_SPEED_GUST = [0, 2, 22]
 
 function fillImageData(
     imgData: ImageData,
@@ -75,23 +79,33 @@ function fillImageData(
             const bufferI = (row * cols + col) * bytesPerPoint
             const index = (row * cols + col) * 4
             const firstByte = buffer[bufferI]
+            const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
 
             let color = [255, 255, 255, 255]
             if (isMeteoEqual(meteo, CATEGORICAL_RAIN)) {
                 color = categoricalRainColors(firstByte)
             }
             else if (isMeteoEqual(meteo, TOTAL_PRECIPITATION)) {
-                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = precipitationColors(encodedValue, conversion)
             }
             else if (isMeteoEqual(meteo, RAIN_PRECIPITATION)) {
-                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = precipitationColors(encodedValue, conversion)
             }
             else if (isMeteoEqual(meteo, TEMPERATURE)) {
-                const encodedValue = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 color = temperatureColors(encodedValue, conversion)
-            } 
+            }
+            else if (isMeteoEqual(meteo, WIND_DIRECTION)) {
+                const encodedValU = toSignedInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                const vOffset = buffer.length/2
+                const encodedValV = toSignedInt(buffer.slice(bufferI+vOffset, bufferI+vOffset+bitsPerDataPoint/8))
+                color = windDirectionColors(encodedValU, encodedValV, conversion)
+            }
+            else if (isMeteoEqual(meteo, WIND_SPEED)) {
+                color = windSpeedColors(encodedValue, conversion)
+            }
+            else if (isMeteoEqual(meteo, WIND_SPEED_GUST)) {
+                color = windSpeedColors(encodedValue, conversion)
+            }
             else {
                 color = interpolateColors(firstByte, fromColor, toColor)
             }
@@ -120,6 +134,18 @@ export function isMeteoEqual(meteo: MeteoParam, arr: number[]): boolean {
     return arr.length === arr2.length && arr.every((value, index) => value === arr2[index])
 }
 
-function toInt (bytes: Uint8Array): number {
+function toInt(bytes: Uint8Array): number {
     return bytes.reduce((acc, curr) => acc * 256 + curr)
+}
+
+function toSignedInt(bytes: Uint8Array): number {
+    let unsigned = toInt(bytes)
+
+    let signBit = 1 << (bytes.length * 8 - 1) // Example: 16-bit -> 0x8000
+    if (unsigned & signBit) {
+        // If the sign bit is set, compute the two's complement
+        return unsigned - (1 << (bytes.length * 8))
+    }
+
+    return unsigned // If the sign bit is not set, return as is
 }

@@ -1,5 +1,17 @@
 export type ColorEntry = { value: number, color: [number, number, number, number]}
 
+export const WIND_SPEED: ColorEntry[] = [
+    { value: 40, color: [170, 0, 190, 255] },
+    { value: 35, color: [170, 0, 190, 255] },
+    { value: 30, color: [225, 20, 0, 255] },
+    { value: 25, color: [225, 20, 0, 255] },
+    { value: 20, color: [255, 160, 0, 255] },
+    { value: 15, color: [255, 250, 170, 255] },
+    { value: 10, color: [80, 240, 80, 255] },
+    { value: 5, color: [45, 155, 150, 255] },
+    { value: 0, color: [180, 240, 250, 255] },
+]
+
 export const PRECIPITATION: ColorEntry[] = [
     { value: 30, color: [126, 26, 99, 255] },
     { value: 25, color: [120, 27, 131, 255] },
