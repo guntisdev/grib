@@ -16,6 +16,7 @@ export function drawGrib(
     bitmask: Uint8Array | undefined,
     colors: [string, string],
     cropBounds: CropBounds | undefined,
+    gribArr: GribMessage[],
 ): void {
     const bytesPerPoint = grib.bitsPerDataPoint / 8
     let { grid } = grib
@@ -24,6 +25,7 @@ export function drawGrib(
     let fullBuffer = bitmask ? applyBitmask(grid, buffer, bitmask, bytesPerPoint) : buffer
 
     if (cropBounds) {
+        // TODO crop out wind direction correctly (where 2 combined u and v data)
         fullBuffer = extractFromBounds(grib.grid, fullBuffer, cropBounds, bytesPerPoint)
         cols = cropBounds.width
         rows = cropBounds.height
@@ -36,7 +38,7 @@ export function drawGrib(
     const ctx = canvas.getContext('2d')!
     const imgData = ctx.createImageData(cols, rows)
     
-    fillImageData(imgData, grib, fullBuffer, bytesPerPoint, colors)
+    fillImageData(imgData, grib, fullBuffer, bytesPerPoint, colors, gribArr)
 
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')!
@@ -65,6 +67,7 @@ function fillImageData(
     buffer: Uint8Array,
     bytesPerPoint: number,
     colors: [string, string],
+    gribArr: GribMessage[],
 ) {
     const { meteo, conversion, bitsPerDataPoint } = grib
     const fromColor = rgbHexToU8(colors[0])
@@ -95,10 +98,12 @@ function fillImageData(
                 color = temperatureColors(encodedValue, conversion)
             }
             else if (isMeteoEqual(meteo, WIND_DIRECTION)) {
-                const encodedValU = toSignedInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
+                const encodedValU = toInt(buffer.slice(bufferI, bufferI+bitsPerDataPoint/8))
                 const vOffset = buffer.length/2
-                const encodedValV = toSignedInt(buffer.slice(bufferI+vOffset, bufferI+vOffset+bitsPerDataPoint/8))
-                color = windDirectionColors(encodedValU, encodedValV, conversion)
+                const encodedValV = toInt(buffer.slice(bufferI+vOffset, bufferI+vOffset+bitsPerDataPoint/8))
+                const metaU = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===2 && m.meteo.levelType===103 && m.meteo.levelValue===10)
+                const metaV = gribArr.find(m => m.meteo.discipline===0 && m.meteo.category===2 && m.meteo.product===3 && m.meteo.levelType===103 && m.meteo.levelValue===10)
+                color = windDirectionColors(encodedValU, encodedValV, metaU!.conversion, metaV!.conversion)
             }
             else if (isMeteoEqual(meteo, WIND_SPEED)) {
                 color = windSpeedColors(encodedValue, conversion)
@@ -138,7 +143,7 @@ function toInt(bytes: Uint8Array): number {
     return bytes.reduce((acc, curr) => acc * 256 + curr)
 }
 
-function toSignedInt(bytes: Uint8Array): number {
+export function toSignedInt(bytes: Uint8Array): number {
     let unsigned = toInt(bytes)
 
     let signBit = 1 << (bytes.length * 8 - 1) // Example: 16-bit -> 0x8000

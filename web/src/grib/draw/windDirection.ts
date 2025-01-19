@@ -7,11 +7,12 @@ import { WIND_SPEED } from './constants'
 export function windDirectionColors(
     encodedU: number,
     encodedV: number,
-    { reference, binaryScale, decimalScale}: MeteoConversion,
+    convU: MeteoConversion,
+    convV: MeteoConversion,
 ) {
     // TODO extract also direction, currently only speed here
-    const windSpeedU = (reference + encodedU * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale)
-    const windSpeedV = (reference + encodedV * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale)
+    const windSpeedU = (convU.reference + encodedU * Math.pow(2, convU.binaryScale)) * Math.pow(10, -convU.decimalScale)
+    const windSpeedV = (convV.reference + encodedV * Math.pow(2, convV.binaryScale)) * Math.pow(10, -convV.decimalScale)
     const windSpeed = Math.sqrt(Math.pow(windSpeedU, 2) + Math.pow(windSpeedV, 2))
 
     return valueToColorInterpolated(windSpeed, WIND_SPEED)

@@ -47,7 +47,7 @@ export const GribView: Component<{}> = () => {
         const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined
         if (!cachedMessage || !cachedBuffer || !canvas) return;
 
-        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds)
+        drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds, getMessages())
     })
 
     function onMessageClick(id: number) {
@@ -82,7 +82,7 @@ export const GribView: Component<{}> = () => {
                 cachedBitmask = bitmaskBuffer && new Uint8Array(bitmaskBuffer)
                 const colors: [string, string] = [fromColor[0](), toColor[0]()]
                 const cropBounds = isCrop[0]() ? CROP_BOUNDS : undefined 
-                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds)
+                drawGrib(canvas, cachedMessage, cachedBuffer, cachedBitmask, colors, cropBounds, getMessages())
             })
             .catch(err => console.warn(err.message))
             .finally(() => setIsLoading(false))
