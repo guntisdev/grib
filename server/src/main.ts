@@ -80,7 +80,7 @@ Deno.serve({
         if (typeof id !== 'string') return new Response(JSON.stringify({ error: "Incorrect grib id" }),
         { status: 500, ...jsonHeaders })
         await clearFolder(DATA_PATH)
-        const gribUrl = `${harmonieUrl}/v1/forecastdata/download/${id}?api-key=${harmonieApiKey}`
+        const gribUrl = `https://download.dmi.dk/public/opendata/${id}?api-key=${harmonieApiKey}`
         const outputPath = `${DATA_PATH}/${id}`
         const response = await fetch(gribUrl);
         if (!response.ok) {

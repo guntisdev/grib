@@ -4,13 +4,106 @@ import { valueToColorInterpolated } from '../../helpers/interpolateColors'
 import { GribMessage, MeteoConversion } from '../../interfaces/interfaces'
 import { WIND_SPEED } from './constants'
 
+const CELL_SIZE = 12
+
+export function windDirectionArrows(
+    imgData: ImageData,
+    messages: GribMessage[],
+    buffers: Uint8Array[],
+) {
+    const [, metaU, metaV] = messages
+    const { conversion: convU } = metaU
+    const { conversion: convV } = metaV
+    const [, bufferU, bufferV] = buffers
+    const cols = imgData.width
+    const rows = imgData.height
+    const canvas = document.createElement('canvas')
+    canvas.width = imgData.width
+    canvas.height = imgData.height
+    const ctx = canvas.getContext('2d')!
+    ctx.putImageData(imgData, 0, 0) // draw wind speed color below direction
+    const directions: number[][] = []
+    const bytesPerPoint = metaU.bitsPerDataPoint/8
+
+    for (let row = 0; row < rows; row++) {
+        directions[row] = []
+        for (let col = 0; col < cols; col++) {
+            const bufferI = (row * cols + col) * bytesPerPoint
+    
+            const encodedU = toInt(bufferU.slice(bufferI, bufferI+bytesPerPoint))
+            const encodedV = toInt(bufferV.slice(bufferI, bufferI+bytesPerPoint))
+            const windSpeedU = (convU.reference + encodedU * Math.pow(2, convU.binaryScale)) * Math.pow(10, -convU.decimalScale)
+            const windSpeedV = (convV.reference + encodedV * Math.pow(2, convV.binaryScale)) * Math.pow(10, -convV.decimalScale)
+
+            const direction = (Math.atan2(windSpeedU, windSpeedV)*180/Math.PI + 360) % 360
+            // TODO hack for calibrating, but still does not look correct
+            const lambertOffset = 45
+            directions[row][col] = direction + lambertOffset
+        }
+    }
+
+    const gridH = Math.floor(directions.length/CELL_SIZE)
+    const gridW = Math.floor(directions[0].length/CELL_SIZE)
+    for (let row = 0; row < gridH; row++) {
+        for (let col = 0; col < gridW; col++) {
+            const direction = getAvgDirection(directions, row, col)
+            const centerX = col * CELL_SIZE + CELL_SIZE/2
+            const centerY = row * CELL_SIZE + CELL_SIZE/2
+            const arrowLength = CELL_SIZE*0.9
+
+            ctx.save()
+            ctx.translate(centerX, centerY)
+            ctx.rotate(direction)
+
+            ctx.beginPath();
+            ctx.moveTo(-arrowLength / 2, 0)
+            ctx.lineTo(arrowLength / 2, 0)
+            ctx.stroke()
+
+            const arrowheadSize = CELL_SIZE/4
+            ctx.beginPath()
+            ctx.moveTo(arrowLength / 2, 0)
+            ctx.lineTo(arrowLength / 2 - arrowheadSize, -arrowheadSize / 2)
+            ctx.lineTo(arrowLength / 2 - arrowheadSize, arrowheadSize / 2)
+            ctx.closePath()
+            ctx.fill()
+
+            ctx.restore()
+        }
+    }
+
+    return ctx.getImageData(0, 0, imgData.width, imgData.height)
+}
+
+// in radians
+function getAvgDirection(directions: number[][], gridRow: number, gridCol: number) {
+    let sumSin = 0; // Sum of sine components
+    let sumCos = 0; // Sum of cosine components
+
+    for (let row = 0; row < CELL_SIZE; row++) {
+        for (let col = 0; col < CELL_SIZE; col++) {
+            const directionRow = gridRow * CELL_SIZE + row;
+            const directionCol = gridCol * CELL_SIZE + col;
+
+            const directionRad = (Math.PI / 180) * directions[directionRow][directionCol]; // Convert to radians
+
+            sumSin += Math.sin(directionRad);
+            sumCos += Math.cos(directionRad);
+        }
+    }
+
+    // Compute the average direction
+    const avgDirection = Math.atan2(sumSin, sumCos); // Result is in radians
+    return (avgDirection + 2 * Math.PI) % (2 * Math.PI); // Ensure the result is in [0, 2π)
+}
+
+// actually calculates and draws wind speed
 export function windDirectionColors(
     encodedU: number,
     encodedV: number,
     convU: MeteoConversion,
     convV: MeteoConversion,
 ) {
-    // TODO extract also direction, currently only speed here
     const windSpeedU = (convU.reference + encodedU * Math.pow(2, convU.binaryScale)) * Math.pow(10, -convU.decimalScale)
     const windSpeedV = (convV.reference + encodedV * Math.pow(2, convV.binaryScale)) * Math.pow(10, -convV.decimalScale)
     const windSpeed = Math.sqrt(Math.pow(windSpeedU, 2) + Math.pow(windSpeedV, 2))
@@ -55,4 +148,8 @@ export function fetchWindData(
         const buffers = [bufferU, bufferU, bufferV]
         return [messages, buffers, []]
     })
+}
+
+function toInt(bytes: Uint8Array): number {
+    return bytes.reduce((acc, curr) => acc * 256 + curr)
 }

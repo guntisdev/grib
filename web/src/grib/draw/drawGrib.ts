@@ -5,7 +5,7 @@ import { extractFromBounds } from './bounds.ts'
 import { categoricalRainColors } from './categoricalRain.ts'
 import { precipitationColors } from './precipitation.ts'
 import { temperatureColors } from './temperature.ts'
-import { windDirectionColors, windSpeedColors } from './windDirection.ts'
+import { windDirectionArrows, windDirectionColors, windSpeedColors } from './windDirection.ts'
 
 export type CropBounds = { x: number, y: number, width: number, height: number }
 
@@ -29,7 +29,6 @@ export function drawGrib(
     })
 
     if (cropBounds) {
-        // TODO crop out wind direction correctly (where 2 combined u and v data)
         modifiedBuffers = modifiedBuffers.map(buffer => extractFromBounds(grib, buffer, cropBounds))
         cols = cropBounds.width
         rows = cropBounds.height
@@ -40,9 +39,12 @@ export function drawGrib(
     canvas.style.width = '100%'
     canvas.style.minWidth = '1280px'
     const ctx = canvas.getContext('2d')!
-    const imgData = ctx.createImageData(cols, rows)
+    let imgData = ctx.createImageData(cols, rows)
     
     fillImageData(imgData, messages, modifiedBuffers, colors)
+    if (grib.meteo.discipline === 0 && grib.meteo.category === 2 && grib.meteo.product === 192) {
+        imgData = windDirectionArrows(imgData, messages, modifiedBuffers)
+    }
 
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')!
