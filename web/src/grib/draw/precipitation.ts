@@ -8,7 +8,8 @@ export function precipitationColors(
     { reference, binaryScale, decimalScale}: MeteoConversion,
     isInterpolated = true,
 ): [number, number, number, number] {
-    const rainMM = (reference + encodedValue * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale) / 1000
+    // const rainMM = (reference + encodedValue * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale) / 1000
+    const rainMM = (reference + encodedValue * Math.pow(2, binaryScale)) * Math.pow(10, -decimalScale)
 
     return isInterpolated
         ? valueToColorInterpolated(rainMM, PRECIPITATION)

@@ -3,6 +3,7 @@ import { fetchBuffer } from '../../helpers/fetch'
 import { valueToColorInterpolated } from '../../helpers/interpolateColors'
 import { GribMessage, MeteoConversion } from '../../interfaces/interfaces'
 import { WIND_SPEED } from './constants'
+import { rotateWind } from './windRotate'
 
 const CELL_SIZE = 12
 
@@ -25,6 +26,14 @@ export function windDirectionArrows(
     const directions: number[][] = []
     const bytesPerPoint = metaU.bitsPerDataPoint/8
 
+    const lambert = (messages[0].grid as any).lambert
+    let rot_lat = lambert[0] / 1_000_000
+    let rot_lon = lambert[1] / 1_000_000
+    // rot_lat = -9999.0
+    // rot_lon = -9999.0
+    let reg_lat = 56.530592
+    let reg_lon = -2.918742
+
     for (let row = 0; row < rows; row++) {
         directions[row] = []
         for (let col = 0; col < cols; col++) {
@@ -35,10 +44,11 @@ export function windDirectionArrows(
             const windSpeedU = (convU.reference + encodedU * Math.pow(2, convU.binaryScale)) * Math.pow(10, -convU.decimalScale)
             const windSpeedV = (convV.reference + encodedV * Math.pow(2, convV.binaryScale)) * Math.pow(10, -convV.decimalScale)
 
-            const direction = (Math.atan2(windSpeedU, windSpeedV)*180/Math.PI + 360) % 360
-            // TODO hack for calibrating, but still does not look correct
-            const lambertOffset = 45
-            directions[row][col] = direction + lambertOffset
+            // const directionDeg = (Math.atan2(windSpeedU, windSpeedV)*180/Math.PI + 360 +45) % 360
+            const directionDeg = rotateWind(rot_lat, rot_lon, reg_lat, reg_lon, windSpeedU, windSpeedV)[0]
+            const directionRad = (Math.PI / 180) * directionDeg
+
+            directions[row][col] = directionRad
         }
     }
 
@@ -46,14 +56,17 @@ export function windDirectionArrows(
     const gridW = Math.floor(directions[0].length/CELL_SIZE)
     for (let row = 0; row < gridH; row++) {
         for (let col = 0; col < gridW; col++) {
-            const direction = getAvgDirection(directions, row, col)
+            const directionAvg = true
+                ? getAvgDirection(directions, row, col)
+                : getDirection(directions, row, col)
+
             const centerX = col * CELL_SIZE + CELL_SIZE/2
             const centerY = row * CELL_SIZE + CELL_SIZE/2
             const arrowLength = CELL_SIZE*0.9
 
             ctx.save()
             ctx.translate(centerX, centerY)
-            ctx.rotate(direction)
+            ctx.rotate(directionAvg)
 
             ctx.beginPath();
             ctx.moveTo(-arrowLength / 2, 0)
@@ -75,6 +88,12 @@ export function windDirectionArrows(
     return ctx.getImageData(0, 0, imgData.width, imgData.height)
 }
 
+function getDirection(directions: number[][], gridRow: number, gridCol: number) {
+    const directionRow = gridRow * CELL_SIZE + Math.round(CELL_SIZE/2)
+    const directionCol = gridCol * CELL_SIZE + Math.round(CELL_SIZE/2)
+    return directions[directionRow][directionCol]
+}
+
 // in radians
 function getAvgDirection(directions: number[][], gridRow: number, gridCol: number) {
     let sumSin = 0; // Sum of sine components
@@ -85,7 +104,7 @@ function getAvgDirection(directions: number[][], gridRow: number, gridCol: numbe
             const directionRow = gridRow * CELL_SIZE + row;
             const directionCol = gridCol * CELL_SIZE + col;
 
-            const directionRad = (Math.PI / 180) * directions[directionRow][directionCol]; // Convert to radians
+            const directionRad = directions[directionRow][directionCol]
 
             sumSin += Math.sin(directionRad);
             sumCos += Math.cos(directionRad);

@@ -57,13 +57,14 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
             size: size,
         }
         sections.push(section)
-
+        const tmp = buffer.slice()
+        const tmpSize = size
         switch (section.id) {
             case 3:
                 grid.cols = toInt(buffer.slice(26, 30))
                 grid.rows = toInt(buffer.slice(30, 34))
                 grid.template = toInt(buffer.slice(8, 10)) // 30 - lambert projection
-                grid.lambert = [toInt(buffer.slice(34, 38)), toInt(buffer.slice(38, 42)), toInt(buffer.slice(42, 46)), toInt(buffer.slice(46, 50))]
+                grid.lambert = [toSignedInt(buffer.slice(34, 38)), toSignedInt(buffer.slice(38, 42)), toSignedInt(buffer.slice(42, 46)), toSignedInt(buffer.slice(46, 50))]
                 // console.log(buffer)
                 // data points toInt(buffer.slice(2, 6))
                 break
@@ -75,9 +76,11 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 if (buffer[4] === 1) meteo.subType = 'now'
                 if (buffer[4] === 11) meteo.subType = 'period'
                 // 0 = No rain, 1 = Drizzle, 2 = Light rain, 3 = Moderate rain, 4 Heavy rain
-                // if (meteo.category === 0 && meteo.product === 0) {
-                //     console.log(buffer[18], buffer[23])
-                // }
+                if (meteo.category === 2 && meteo.product === 2 && meteo.levelType === 103 && meteo.levelValue === 10) {
+                    // console.log(buffer[18], buffer[23])
+                    // console.log(tmpSize)
+                    // console.log(tmp)
+                }
                 break;
             case 5:
                 bitsPerDataPoint = buffer[15]
@@ -127,6 +130,18 @@ export async function extractBinaryChunk(filePath: string, offset: number, lengt
 
 export function toInt (bytes: Uint8Array): number {
     return bytes.reduce((acc, curr) => acc * 256 + curr)
+}
+
+export function toSignedInt(bytes: Uint8Array): number {
+    const unsigned = toInt(bytes)
+
+    const signBit = 1 << (bytes.length * 8 - 1) // Example: 16-bit -> 0x8000
+    if (unsigned & signBit) {
+        // If the sign bit is set, compute the two's complement
+        return unsigned - (1 << (bytes.length * 8))
+    }
+
+    return unsigned // If the sign bit is not set, return as is
 }
 
 export function toFloat(bytes: Uint8Array): number {

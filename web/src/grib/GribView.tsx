@@ -53,6 +53,7 @@ export const GribView: Component<{}> = () => {
     function onMessageClick(id: number) {
         if (!canvas) throw new Error('canvas not found')
         const message = getMessages()[id]
+        console.log(message)
 
         const bitmaskSection = message.sections.find(section => section.id === 6)
         if (!bitmaskSection) throw new Error('Binary section not found')

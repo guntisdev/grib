@@ -151,9 +151,9 @@ function toInt(bytes: Uint8Array): number {
 }
 
 export function toSignedInt(bytes: Uint8Array): number {
-    let unsigned = toInt(bytes)
+    const unsigned = toInt(bytes)
 
-    let signBit = 1 << (bytes.length * 8 - 1) // Example: 16-bit -> 0x8000
+    const signBit = 1 << (bytes.length * 8 - 1) // Example: 16-bit -> 0x8000
     if (unsigned & signBit) {
         // If the sign bit is set, compute the two's complement
         return unsigned - (1 << (bytes.length * 8))
