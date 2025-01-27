@@ -41,6 +41,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
     const conversion = { reference: -1, binaryScale: -1, decimalScale: -1 }
     const grid = { cols: -1, rows: -1, template: -1, lambert: [-1] } // to be updated in 3rd section
     const version = initBuffer[7]
+    const time = { referenceTime: '', forecastTime: ''}
     let bitsPerDataPoint = 0
     position += 16
     while (position < initPosition + messageLength - 4) { // last 4 bytes 55, 55, 55, 55 which indicates end of message
@@ -60,6 +61,16 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         const tmp = buffer.slice()
         const tmpSize = size
         switch (section.id) {
+            case 1: {
+                const year = toInt(buffer.slice(8, 10))
+                const month = buffer[10].toString().padStart(2, '0')
+                const day = buffer[11].toString().padStart(2, '0')
+                const hour = buffer[12].toString().padStart(2, '0')
+                const minute = buffer[13].toString().padStart(2, '0')
+                const second = buffer[14].toString().padStart(2, '0')
+                time.referenceTime = `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`
+                break
+            }
             case 3:
                 grid.cols = toInt(buffer.slice(26, 30))
                 grid.rows = toInt(buffer.slice(30, 34))
@@ -68,7 +79,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                 // console.log(buffer)
                 // data points toInt(buffer.slice(2, 6))
                 break
-            case 4:
+            case 4: {
                 meteo.category = buffer[5]
                 meteo.product = buffer[6]
                 meteo.levelType = buffer[18]
@@ -81,7 +92,23 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
                     // console.log(tmpSize)
                     // console.log(tmp)
                 }
-                break;
+                if (buffer[4] === 11) {
+                    const year = toInt(buffer.slice(33, 35))
+                    const month = buffer[35].toString().padStart(2, '0')
+                    const day = buffer[36].toString().padStart(2, '0')
+                    const hour = buffer[37].toString().padStart(2, '0')
+                    const minute = buffer[38].toString().padStart(2, '0')
+                    const second = buffer[39].toString().padStart(2, '0')
+                    time.forecastTime = `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`
+                } else {
+                    // buffer[4] === 1
+                    const leadTime = toInt(buffer.slice(16, 18))
+                    const referenceMilis = new Date(time.referenceTime).getTime()
+                    const forecastTime = new Date(referenceMilis + leadTime*60*60*1000)
+                    time.forecastTime = forecastTime.toISOString()
+                }
+                break
+                }
             case 5:
                 bitsPerDataPoint = buffer[15]
                 // if (meteo.category === 0 && meteo.product === 0) console.log(buffer)
@@ -109,6 +136,7 @@ export async function parseGribMessage(file: Deno.FsFile, initPosition: number):
         version,
         meteo,
         grid,
+        time,
         title: meteoCodeToName(meteo).join(', '),
         bitsPerDataPoint,
         conversion,
@@ -150,43 +178,4 @@ export function toFloat(bytes: Uint8Array): number {
 
 export function toString (bytes: Uint8Array): string {
     return String.fromCharCode(...bytes)
-}
-
-
-// TODO delete after moving all parsed data to new parser
-async function parseGribMessage2(file: Deno.FsFile, position: number) {
-    /* ++++++++++++ 1st section ++++++++++++++++ */
-    await file.seek(position+16, Deno.SeekMode.Start)
-    const sizeBuffer = new Uint8Array(4)
-    await file.read(sizeBuffer)
-    const sectionSize = toInt(sizeBuffer.slice(0, 4))
-    const buffer = new Uint8Array(sectionSize-4)
-    await file.read(buffer)
-    // console.log(`section size: ${sectionSize}, buffer: ${buffer}`)
-    
-    const sectionNumber = buffer[0]
-    const year = toInt(buffer.slice(8, 10))
-    const month = buffer[10]
-    const day = buffer[11]
-    const hour = buffer[12]
-    const minute = buffer[13]
-    const second = buffer[14]
-    // console.log(`n: ${sectionNumber} ${year}-${month}-${day} ${hour}:${minute}:${second}`)
-
-
-    /* ++++++++++++ 3rd section ++++++++++++++++ */
-    // second section is skipped as there is data for local dev use
-    const sizeBuffer3 = new Uint8Array(4)
-    await file.read(sizeBuffer3)
-    const sectionSize3 = toInt(sizeBuffer3.slice(0, 4))
-    const buffer3 = new Uint8Array(sectionSize3-4)
-    await file.read(buffer3)
-    // console.log(`section size: ${sectionSize3}, buffer: ${buffer3}`)
-
-    const sectionNumber3 = buffer3[0]
-    const gridDefinition = buffer[1] // 0 - defined in this section
-    const gridPoints = toInt(buffer.slice(2, 6))
-    const optionalGridPoints = buffer[6] // 0 - not included
-    const templateNumber = buffer[7]  // 0 - lat/lon
-    // console.log(`n: ${sectionNumber3}, gridPoints: ${gridPoints}`)
 }

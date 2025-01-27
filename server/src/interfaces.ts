@@ -21,11 +21,17 @@ export type MeteoConversion = {
     decimalScale: number, // int
 }
 
+export type MeteoTime = {
+    referenceTime: string,
+    forecastTime: string,
+}
+
 export type GribMessage = {
     offset: number,
     size: number,
     version: number,
     title: string,
+    time: MeteoTime,
     meteo: MeteoParam,
     grid: MeteoGrid,
     bitsPerDataPoint: number,
